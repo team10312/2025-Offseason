@@ -19,6 +19,7 @@ import frc.robot.commands.SetAlgaeArmDegrees;
 import frc.robot.commands.SetShooterSpeed;
 import frc.robot.commands.SetElevatorInches;
 import frc.robot.commands.SetElevatorPercent;
+import frc.robot.commands.ResetElevator;
 
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -74,8 +75,8 @@ public class RobotContainer {
 
         //contols
         operator.square().onTrue(new SetAlgaeArmDegrees(10));
-        operator.circle().onTrue(new SetElevatorInches(15));
         operator.R2().onTrue(new SetElevatorInches(3));
+        operator.circle().onTrue(new ResetElevator());
         operator.povUp().onTrue(new SetElevatorPercent(0.15));
         operator.povDown().onTrue(new SetElevatorPercent(-0.15));
         operator.povRight().onTrue(new SetElevatorPercent(0));

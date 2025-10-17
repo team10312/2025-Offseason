@@ -59,10 +59,27 @@ public void setPercentOutput(double percent){
     mElevator.set(percent);
   }
 
+public void resetHomePosition(){
+    mElevator.setPosition(0);
+}
+
+public double getCurrent(){
+    return mElevator.getStatorCurrent().getValueAsDouble();
+}
+
+public boolean currentSpiked(){
+    if(getCurrent() > 20){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
 
   @Override
   public void periodic() {
     SmartDashboard.putNumber("Elevator Inches", getInches());
+    SmartDashboard.putNumber("Elevator Current", getCurrent());
   }
 
 
