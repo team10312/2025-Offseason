@@ -7,9 +7,15 @@ package frc.robot.subsystems;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import frc.robot.generated.TunerConstants;
 import frc.robot.generated.Constants;
+
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 
 import java.lang.reflect.Member;
@@ -35,16 +41,44 @@ public class Elevator extends SubsystemBase {
 
     mElevator = new TalonFX(29, "rio");
 
+    var talonFXConfigs = new TalonFXConfiguration();
+    var talonFXConfigurator = mElevator.getConfigurator();
+    var limitConfigs = new CurrentLimitsConfigs();
 
+    limitConfigs.StatorCurrentLimit = 80;
+    limitConfigs.SupplyCurrentLimit = 40;
+
+    limitConfigs.StatorCurrentLimitEnable = true;
+
+    talonFXConfigurator.apply(limitConfigs);
+
+    var Slot0Configs = talonFXConfigs.Slot0;
+    Slot0Configs.kS = 0.35;
+    Slot0Configs.kV = 0.12;
+    Slot0Configs.kA = 0.01;
+    Slot0Configs.kP = 2.5;
+    Slot0Configs.kI = 0;
+    Slot0Configs.kD = 0.1;
+    Slot0Configs.kG = 0.35; 
+
+    var motionMagicConfigs = talonFXConfigs.MotionMagic;
+    motionMagicConfigs.MotionMagicCruiseVelocity = 30;
+    motionMagicConfigs.MotionMagicAcceleration = 300;
+    motionMagicConfigs.MotionMagicJerk = 3000;
+
+    talonFXConfigs.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+
+    mElevator.getConfigurator().apply(talonFXConfigs);
   }
 
 public double rotationsToInches(double rotations){
     //should add home pos
-    return ((rotations * Math.PI * 1.729) / 20);
+    return (4 + (rotations * Math.PI * 1.729) / 20);
 }
 
 public double inchesToRotations(double inches){
-    return ((inches) * 20) / (Math.PI * 1.729);}
+    return ((inches - 4) * 20) / 1.729;
+}
 
 public double getInches(){
     return rotationsToInches(mElevator.getPosition().getValueAsDouble());
@@ -68,7 +102,7 @@ public double getCurrent(){
 }
 
 public boolean currentSpiked(){
-    if(getCurrent() > 20){
+    if(getCurrent() > 30){
         return true;
     }
     else{

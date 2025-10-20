@@ -5,28 +5,30 @@
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Elevator;
+import frc.robot.subsystems.Shooter;
 
 /** An example command that uses an example subsystem. */
-public class ResetElevator extends Command {
+public class SetIntakeSpeed extends Command {
   @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
-  private final Elevator m_Elevator = new Elevator();
-  private final double percent;
+  private final Shooter m_Shooter = new Shooter();
+  private final double leftSpeed;
+  private final double rightSpeed;
 
   /**
    * Creates a new ExampleCommand.
    *
    * @param subsystem The subsystem used by this command.
    */
-  public ResetElevator(double percent) {
+  public SetIntakeSpeed(double leftSpeed, double rightSpeed) {
+    this.leftSpeed = leftSpeed;
+    this.rightSpeed = rightSpeed;
     // Use addRequirements() here to declare subsystem dependencies.
-    this.percent = percent;
   }
 
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-    m_Elevator.setPercentOutput(-percent);
+    m_Shooter.setSpeed(-leftSpeed, rightSpeed);
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -36,13 +38,12 @@ public class ResetElevator extends Command {
   // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {
-    m_Elevator.setPercentOutput(0);
-    m_Elevator.resetHomePosition();
+    m_Shooter.setSpeed(0, 0);
   }
 
   // Returns true when the command should end.
   @Override
   public boolean isFinished() {
-    return m_Elevator.currentSpiked();
+    return m_Shooter.coralDetected();
   }
 }

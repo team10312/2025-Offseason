@@ -14,11 +14,13 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.commands.SetAlgaeArmDegrees;
 import frc.robot.commands.SetShooterSpeed;
 import frc.robot.commands.SetElevatorInches;
 import frc.robot.commands.SetElevatorPercent;
+import frc.robot.commands.SetIntakeSpeed;
 import frc.robot.commands.ResetElevator;
 
 import frc.robot.generated.TunerConstants;
@@ -73,13 +75,23 @@ public class RobotContainer {
         // reset the field-centric heading on left bumper press
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
-        //contols
-        operator.square().onTrue(new SetAlgaeArmDegrees(10));
-        operator.R2().onTrue(new SetElevatorInches(3));
-        operator.circle().onTrue(new ResetElevator());
+        //controls
+
+        //Elevator
+        operator.R1().onTrue(new SetElevatorInches(5));
+        // operator.circle().onTrue(new ResetElevator(0.1));
+        operator.circle().onTrue(new SetElevatorInches(3.5));
         operator.povUp().onTrue(new SetElevatorPercent(0.15));
         operator.povDown().onTrue(new SetElevatorPercent(-0.15));
         operator.povRight().onTrue(new SetElevatorPercent(0));
+
+        //Algae Arm
+        operator.square().onTrue(new SetAlgaeArmDegrees(10));
+
+        //Shooter/Intake
+        operator.R2().onTrue(new SetShooterSpeed(0.9375, 0.15));
+        operator.L2().onTrue(new SetIntakeSpeed(0.9375, 0.15));
+        operator.R3().onTrue(new SetIntakeSpeed(-0.05, -0.3125)); // Reject Note
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
