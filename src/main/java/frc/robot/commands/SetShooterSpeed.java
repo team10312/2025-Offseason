@@ -28,7 +28,7 @@ public class SetShooterSpeed extends Command {
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-    m_Shooter.setSpeed(leftSpeed, rightSpeed);
+    m_Shooter.setSpeed(-leftSpeed, rightSpeed);
   }
 
   // Called every time the scheduler runs while the command is scheduled.

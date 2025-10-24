@@ -66,7 +66,7 @@ public class Elevator extends SubsystemBase {
     motionMagicConfigs.MotionMagicAcceleration = 300;
     motionMagicConfigs.MotionMagicJerk = 3000;
 
-    talonFXConfigs.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+    talonFXConfigs.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
 
     mElevator.getConfigurator().apply(talonFXConfigs);
   }
@@ -77,7 +77,7 @@ public double rotationsToInches(double rotations){
 }
 
 public double inchesToRotations(double inches){
-    return ((inches - 4) * 20) / 1.729;
+    return (inches - 4) / ((Math.PI * 1.729) / 20);
 }
 
 public double getInches(){

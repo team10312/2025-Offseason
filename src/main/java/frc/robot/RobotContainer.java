@@ -78,9 +78,10 @@ public class RobotContainer {
         //controls
 
         //Elevator
-        operator.R1().onTrue(new SetElevatorInches(5));
+        operator.R1().onTrue(new SetElevatorInches(10));
         // operator.circle().onTrue(new ResetElevator(0.1));
-        operator.circle().onTrue(new SetElevatorInches(3.5));
+        operator.triangle().onTrue(new SetElevatorInches(6));
+        operator.circle().onTrue(new SetElevatorInches(4.5));
         operator.povUp().onTrue(new SetElevatorPercent(0.15));
         operator.povDown().onTrue(new SetElevatorPercent(-0.15));
         operator.povRight().onTrue(new SetElevatorPercent(0));
