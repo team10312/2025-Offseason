@@ -90,9 +90,9 @@ public class RobotContainer {
         operator.square().onTrue(new SetAlgaeArmDegrees(10));
 
         //Shooter/Intake
-        operator.R2().onTrue(new SetShooterSpeed(0.9375, 0.15));
-        operator.L2().onTrue(new SetIntakeSpeed(0.9375, 0.15));
-        operator.R3().onTrue(new SetIntakeSpeed(-0.05, -0.3125)); // Reject Note
+        operator.R2().onTrue(new SetShooterSpeed(0.15, 0.15));
+        operator.L2().onTrue(new SetIntakeSpeed(0.25, 0.25));
+        operator.R3().onTrue(new SetIntakeSpeed(-0.05, -0.05)); // Reject Note
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
