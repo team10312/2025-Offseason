@@ -8,8 +8,11 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
+import com.pathplanner.lib.auto.AutoBuilder;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
@@ -21,6 +24,7 @@ import frc.robot.commands.SetShooterSpeed;
 import frc.robot.commands.SetElevatorInches;
 import frc.robot.commands.SetElevatorPercent;
 import frc.robot.commands.SetIntakeSpeed;
+import frc.robot.commands.IncrementElevatorInches;
 import frc.robot.commands.ResetElevator;
 
 import frc.robot.generated.TunerConstants;
@@ -44,8 +48,13 @@ public class RobotContainer {
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
+    private final SendableChooser<Command> autoChooser;
+
+
     public RobotContainer() {
         configureBindings();
+        autoChooser = AutoBuilder.buildAutoChooser();
+        SmartDashboard.putData("Auto Chooser", autoChooser);
     }
 
     private void configureBindings() {
@@ -78,26 +87,27 @@ public class RobotContainer {
         //controls
 
         //Elevator
-        operator.R1().onTrue(new SetElevatorInches(10));
-        // operator.circle().onTrue(new ResetElevator(0.1));
-        operator.triangle().onTrue(new SetElevatorInches(6));
-        operator.circle().onTrue(new SetElevatorInches(4.5));
-        operator.povUp().onTrue(new SetElevatorPercent(0.15));
-        operator.povDown().onTrue(new SetElevatorPercent(-0.15));
-        operator.povRight().onTrue(new SetElevatorPercent(0));
+        operator.circle().onTrue(new ResetElevator());//home pos
+        operator.cross().onTrue(new SetElevatorInches(8));
+        operator.square().onTrue(new SetElevatorInches(15.5));
+        operator.triangle().onTrue(new SetElevatorInches(25));
+        operator.povUp().onTrue(new IncrementElevatorInches(1));
+        operator.povDown().onTrue(new IncrementElevatorInches(-1));
+        
 
         //Algae Arm
-        operator.square().onTrue(new SetAlgaeArmDegrees(10));
+        // operator.square().onTrue(new SetAlgaeArmDegrees(10));
 
         //Shooter/Intake
-        operator.R2().onTrue(new SetShooterSpeed(0.15, 0.15));
-        operator.L2().onTrue(new SetIntakeSpeed(0.25, 0.25));
-        operator.R3().onTrue(new SetIntakeSpeed(-0.05, -0.05)); // Reject Note
+        operator.R2().whileTrue(new SetShooterSpeed(0.15, 0.15));
+        operator.L2().onTrue(new SetIntakeSpeed(0.35, 0.35));
+        operator.R3().whileTrue(new SetIntakeSpeed(-0.1, -0.1)); // Reject Note
+        operator.L3().whileTrue(new SetShooterSpeed(0.1, 0.1));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
     public Command getAutonomousCommand() {
-        return Commands.print("No autonomous command configured");
+        return autoChooser.getSelected();
     }
 }

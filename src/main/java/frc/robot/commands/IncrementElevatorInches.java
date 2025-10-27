@@ -5,27 +5,29 @@
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.subsystems.Elevator;
 
 /** An example command that uses an example subsystem. */
-public class ResetElevator extends Command {
+public class IncrementElevatorInches extends Command {
   @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
   private final Elevator m_Elevator = new Elevator();
+  private final double offset;
+  private final double oldInches = m_Elevator.getInches();
 
   /**
    * Creates a new ExampleCommand.
    *
    * @param subsystem The subsystem used by this command.
    */
-  public ResetElevator() {
+  public IncrementElevatorInches(double offset) {
+    this.offset = offset;
     // Use addRequirements() here to declare subsystem dependencies.
   }
 
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-    m_Elevator.setInches(4.3);
+    m_Elevator.setInches(m_Elevator.getInches() + offset);
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -34,14 +36,11 @@ public class ResetElevator extends Command {
 
   // Called once the command ends or is interrupted.
   @Override
-  public void end(boolean interrupted) {
-    new WaitCommand(0.4);
-    m_Elevator.setPercentOutput(0);
-  }
+  public void end(boolean interrupted) {}
 
   // Returns true when the command should end.
   @Override
   public boolean isFinished() {
-    return Math.abs(m_Elevator.getInches()) - 4.3 <= 1;
+    return Math.abs((m_Elevator.getInches()) - (oldInches + offset)) <= 1;
   }
 }
