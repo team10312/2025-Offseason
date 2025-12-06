@@ -11,7 +11,10 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import frc.robot.generated.TunerConstants;
 import frc.robot.generated.Constants;
-import com.ctre.phoenix.led.
+
+import com.ctre.phoenix.led.*;
+import com.ctre.phoenix.led.CANdle.LEDStripType;
+import com.ctre.phoenix.led.CANdle.VBatOutputMode;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
@@ -25,96 +28,35 @@ import com.ctre.phoenix6.controls.MotionMagicVoltage;
 // import com.ctre.phoenix6.controls.DutyCycleOut;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-public class CANdle extends SubsystemBase {
-    private static CANdle mInstance;
+public class Leds extends SubsystemBase {
+    private static Leds mInstance;
 
-    private static CANdle getInstance(){
+    private static Leds getInstance(){
         if(mInstance == null){
-            mInstance = new Elevator();
+            mInstance = new Leds();
         }
         return mInstance;
     }
 
-    private final TalonFX mElevator;
-    final MotionMagicVoltage mMotionMagicRequest = new MotionMagicVoltage(0);
+    private final CANdle m_candle;
+    private final int ledCount;
 
-    public CANdle() {
+    public Leds() {
 
-    mElevator = new TalonFX(29, "rio");
+    m_candle = new CANdle(0, "rio");
+    ledCount = 20;
 
-    var talonFXConfigs = new TalonFXConfiguration();
-    var talonFXConfigurator = mElevator.getConfigurator();
-    var limitConfigs = new CurrentLimitsConfigs();
-
-    limitConfigs.StatorCurrentLimit = 80;
-    limitConfigs.SupplyCurrentLimit = 40;
-
-    limitConfigs.StatorCurrentLimitEnable = true;
-
-    talonFXConfigurator.apply(limitConfigs);
-
-    var Slot0Configs = talonFXConfigs.Slot0;
-    Slot0Configs.kS = 0.35;
-    Slot0Configs.kV = 0.12;
-    Slot0Configs.kA = 0.01;
-    Slot0Configs.kP = 2.5;
-    Slot0Configs.kI = 0;
-    Slot0Configs.kD = 0.1;
-    Slot0Configs.kG = 0.35; 
-
-    var motionMagicConfigs = talonFXConfigs.MotionMagic;
-    motionMagicConfigs.MotionMagicCruiseVelocity = 30;
-    motionMagicConfigs.MotionMagicAcceleration = 300;
-    motionMagicConfigs.MotionMagicJerk = 3000;
-
-    talonFXConfigs.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-
-    mElevator.getConfigurator().apply(talonFXConfigs);
   }
 
-public double rotationsToInches(double rotations){
-    //should add home pos
-    return (4 + (rotations * Math.PI * 1.729) / 20);
-}
-
-public double inchesToRotations(double inches){
-    return (inches - 4) / ((Math.PI * 1.729) / 20);
-}
-
-public double getInches(){
-    return rotationsToInches(mElevator.getPosition().getValueAsDouble());
-}
-
-public void setInches(double inches){
-    mElevator.setControl(mMotionMagicRequest.withPosition(inchesToRotations(inches)));
-    // mElevator.setPosition(inchesToRotations(inches));
-}
-
-public void setPercentOutput(double percent){
-    mElevator.set(percent);
+  public void setLeds(int r, int g, int b){
+    m_candle.setLEDs(r, g, b);
   }
 
-public void resetHomePosition(){
-    mElevator.setPosition(0);
-}
 
-public double getCurrent(){
-    return mElevator.getStatorCurrent().getValueAsDouble();
-}
-
-public boolean currentSpiked(){
-    if(getCurrent() > 30){
-        return true;
-    }
-    else{
-        return false;
-    }
-}
 
   @Override
   public void periodic() {
-    SmartDashboard.putNumber("Elevator Inches", getInches());
-    SmartDashboard.putNumber("Elevator Current", getCurrent());
+
   }
 
 

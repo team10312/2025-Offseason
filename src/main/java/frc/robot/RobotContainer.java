@@ -24,8 +24,10 @@ import frc.robot.commands.SetShooterSpeed;
 import frc.robot.commands.SetElevatorInches;
 import frc.robot.commands.SetElevatorPercent;
 import frc.robot.commands.SetIntakeSpeed;
+import frc.robot.commands.SetLed;
 import frc.robot.commands.IncrementElevatorInches;
 import frc.robot.commands.ResetElevator;
+import frc.robot.subsystems.Leds;
 
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -87,22 +89,26 @@ public class RobotContainer {
         //controls
 
         //Elevator
-        operator.circle().onTrue(new ResetElevator());//home pos
-        operator.cross().onTrue(new SetElevatorInches(8));
-        operator.square().onTrue(new SetElevatorInches(15.5));
-        operator.triangle().onTrue(new SetElevatorInches(25));
-        operator.povUp().onTrue(new IncrementElevatorInches(1));
-        operator.povDown().onTrue(new IncrementElevatorInches(-1));
+        // operator.circle().onTrue(new ResetElevator());//home pos
+        // operator.cross().onTrue(new SetElevatorInches(8));
+        // operator.square().onTrue(new SetElevatorInches(15.5));
+        // operator.triangle().onTrue(new SetElevatorInches(25));
+        // operator.povUp().onTrue(new IncrementElevatorInches(1));
+        // operator.povDown().onTrue(new IncrementElevatorInches(-1));
         
 
         //Algae Arm
         // operator.square().onTrue(new SetAlgaeArmDegrees(10));
 
+        //Leds
+        operator.circle().onTrue(new SetLed(0, 0, 255));
+
+
         //Shooter/Intake
-        operator.R2().whileTrue(new SetShooterSpeed(0.15, 0.15));
-        operator.L2().onTrue(new SetIntakeSpeed(0.35, 0.35));
-        operator.R3().whileTrue(new SetIntakeSpeed(-0.1, -0.1)); // Reject Note
-        operator.L3().whileTrue(new SetShooterSpeed(0.1, 0.1));
+        // operator.R2().whileTrue(new SetShooterSpeed(0.15, 0.15));
+        // operator.L2().onTrue(new SetIntakeSpeed(0.35, 0.35));
+        // operator.R3().whileTrue(new SetIntakeSpeed(-0.1, -0.1)); // Reject Note
+        // operator.L3().whileTrue(new SetShooterSpeed(0.1, 0.1));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
