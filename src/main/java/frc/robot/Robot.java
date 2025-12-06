@@ -5,6 +5,7 @@
 package frc.robot;
 
 import com.pathplanner.lib.pathfinding.Pathfinding;
+import com.pathplanner.lib.commands.PathfindingCommand;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -22,7 +23,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit(){
       Pathfinding.setPathfinder(new LocalADStarAK());
-    
+      PathfindingCommand.warmupCommand().schedule();
   }
 
   @Override

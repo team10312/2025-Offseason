@@ -237,6 +237,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             () -> DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red, // flip paths on red if needed
             this // this subsystem owns the requirement
         );
+
+        Pose2d targetPose = new Pose2d(10, 5, Rotation2d.fromDegrees(180));
+
+        PathConstraints constraints = new PathConstraints(
+        3.0, 4.0,
+        Units.degreesToRadians(540), Units.degreesToRadians(720));
+
+        Command pathfindingCommand = AutoBuilder.pathfindToPose(
+        targetPose,
+        constraints,
+        0.0 // Goal end velocity in meters/sec
+        );
     }
 
     public void stop(){

@@ -9,6 +9,7 @@ import static edu.wpi.first.units.Units.*;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.commands.PathfindingCommand;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -103,6 +104,8 @@ public class RobotContainer {
         //Leds
         operator.circle().onTrue(new SetLed(0, 0, 255));
 
+        //Pathfinding
+        driver.R1().onTrue(new PathfindingCommand(null, null, null, null, null, null, null, null));
 
         //Shooter/Intake
         // operator.R2().whileTrue(new SetShooterSpeed(0.15, 0.15));
