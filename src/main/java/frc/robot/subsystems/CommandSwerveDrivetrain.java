@@ -17,6 +17,7 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -32,7 +33,11 @@ import com.pathplanner.lib.config.PIDConstants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
+import edu.wpi.first.math.util.Units;
+import com.pathplanner.lib.path.PathConstraints;
+
 import frc.robot.generated.Constants;
+import frc.robot.generated.LimelightHelpers;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -56,6 +61,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
+
+    //Boolean Checks
+    public boolean pathScheduled = false;
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -207,6 +215,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return this.getState().Pose;
     }
 
+    public Pose2d getLLPose(){
+        return LimelightHelpers.getBotPose2d("limelight-low");
+    }
+
+    public Pose2d getAprilTagPose(){
+        return LimelightHelpers.getTargetPose3d_RobotSpace("limelight-low").toPose2d();
+    }
+
     // Apply the chassis speeds
     private final SwerveRequest.ApplyRobotSpeeds ppApplySpeeds = new SwerveRequest.ApplyRobotSpeeds();
 
@@ -236,18 +252,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             ppRobotConfig, // robot config from GUI
             () -> DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red, // flip paths on red if needed
             this // this subsystem owns the requirement
-        );
-
-        Pose2d targetPose = new Pose2d(10, 5, Rotation2d.fromDegrees(180));
-
-        PathConstraints constraints = new PathConstraints(
-        3.0, 4.0,
-        Units.degreesToRadians(540), Units.degreesToRadians(720));
-
-        Command pathfindingCommand = AutoBuilder.pathfindToPose(
-        targetPose,
-        constraints,
-        0.0 // Goal end velocity in meters/sec
         );
     }
 
@@ -304,6 +308,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 m_hasAppliedOperatorPerspective = true;
             });
         }
+
+        SmartDashboard.putNumber("Robot X", getLLPose().getX());
+        SmartDashboard.putNumber("Robot Y", getLLPose().getY());
+
+        SmartDashboard.putNumber("Tag X", getAprilTagPose().getX());
+        SmartDashboard.putNumber("Tag Y", getAprilTagPose().getY());
+        SmartDashboard.putBoolean("Path Scheduled?", pathScheduled);
     }
 
     private void startSimThread() {

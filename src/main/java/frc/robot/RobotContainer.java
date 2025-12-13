@@ -6,6 +6,8 @@ package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
 
+import java.util.function.BiConsumer;
+
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -26,9 +28,12 @@ import frc.robot.commands.SetElevatorInches;
 import frc.robot.commands.SetElevatorPercent;
 import frc.robot.commands.SetIntakeSpeed;
 import frc.robot.commands.SetLed;
+import frc.robot.commands.AutoAlign;
 import frc.robot.commands.IncrementElevatorInches;
 import frc.robot.commands.ResetElevator;
 import frc.robot.subsystems.Leds;
+import frc.robot.generated.Constants;
+import frc.robot.generated.LimelightHelpers;
 
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -100,12 +105,11 @@ public class RobotContainer {
 
         //Algae Arm
         // operator.square().onTrue(new SetAlgaeArmDegrees(10));
-
         //Leds
         operator.circle().onTrue(new SetLed(0, 0, 255));
-
         //Pathfinding
-        driver.R1().onTrue(new PathfindingCommand(null, null, null, null, null, null, null, null));
+        driver.R1().onTrue(new AutoAlign(drivetrain, drivetrain.getAprilTagPose(), Constants.constraints));
+
 
         //Shooter/Intake
         // operator.R2().whileTrue(new SetShooterSpeed(0.15, 0.15));

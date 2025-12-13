@@ -10,7 +10,7 @@ import frc.robot.subsystems.Leds;
 /** An example command that uses an example subsystem. */
 public class SetLed extends Command {
   @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
-  private final Leds m_candle = new Leds();
+  private final Leds m_candle = Leds.getInstance();
   private final int r;
   private final int g;
   private final int b;

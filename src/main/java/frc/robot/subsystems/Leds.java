@@ -31,7 +31,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Leds extends SubsystemBase {
     private static Leds mInstance;
 
-    private static Leds getInstance(){
+    public static Leds getInstance(){
         if(mInstance == null){
             mInstance = new Leds();
         }
@@ -42,22 +42,20 @@ public class Leds extends SubsystemBase {
     private final int ledCount;
 
     public Leds() {
-
-    m_candle = new CANdle(0, "rio");
-    ledCount = 20;
+        m_candle = new CANdle(44, "rio");
+        ledCount = 20;
+        CANdleConfiguration config = new CANdleConfiguration();
+        config.stripType = LEDStripType.RGB; 
+        config.brightnessScalar = 1.0;
+        config.vBatOutputMode = VBatOutputMode.Modulated;
 
   }
 
   public void setLeds(int r, int g, int b){
-    m_candle.setLEDs(r, g, b);
+    m_candle.setLEDs(r, g, b, 0, 0, ledCount);
   }
-
-
 
   @Override
   public void periodic() {
-
   }
-
-
 }

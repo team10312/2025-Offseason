@@ -1,4 +1,9 @@
 package frc.robot.generated;
+import com.pathplanner.lib.path.PathConstraints;
+
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.util.Units;
+import frc.robot.generated.LimelightHelpers;
 
 public class Constants {
 
@@ -9,5 +14,14 @@ public class Constants {
      // PPHolonomicDriveController gains
      public static final double TRANS_KP = 1.6, TRANS_KI = 0.0, TRANS_KD = 0.06;
      public static final double ROT_KP   = 4.0, ROT_KI   = 0.0, ROT_KD   = 0.15;
+
+    //Pathfinding
+    public static Pose2d targetPose = LimelightHelpers.getTargetPose3d_CameraSpace("limelight-low").toPose2d(); // Robot Pose 2D
+    public static final PathConstraints constraints = new PathConstraints(3.0, 4.0,Units.degreesToRadians(540), Units.degreesToRadians(720));
+    public static Pose2d robotPose = LimelightHelpers.getBotPose2d("limelight-low");
+
+    
+
+
     
 }
