@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import static edu.wpi.first.units.Units.*;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 import com.ctre.phoenix6.SignalLogger;
@@ -34,7 +35,11 @@ import com.pathplanner.lib.config.PIDConstants;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 import edu.wpi.first.math.util.Units;
+
+import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.Waypoint;
 
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
@@ -214,6 +219,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public Pose2d getEstimatedPose(){
         return this.getState().Pose;
     }
+    
 
     public Pose2d getLLPose(){
         return LimelightHelpers.getBotPose2d("limelight-low");
@@ -253,10 +259,37 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             () -> DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red, // flip paths on red if needed
             this // this subsystem owns the requirement
         );
+
+        // Create a list of waypoints from poses. Each pose represents one waypoint.
+        // The rotation component of the pose should be the direction of travel. Do not use holonomic rotation.
     }
 
     public void stop(){
         this.setControl(ppApplySpeeds.withSpeeds(new ChassisSpeeds(0.0, 0.0, 0.0)));
+    }
+
+    PathConstraints constraints = new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI); // The constraints for this path.
+
+
+    List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
+        getLLPose(),
+        getAprilTagPose()
+      );
+
+    public PathPlannerPath autoAlignPath = new PathPlannerPath(
+        waypoints,
+        constraints,
+        null, // The ideal starting state, this is only relevant for pre-planned paths, so can be null for on-the-fly paths.
+        new GoalEndState(0.0, Rotation2d.fromDegrees(-90)) // Goal end state. You can set a holonomic rotation here. If using a differential drivetrain, the rotation will have no effect.
+    );
+
+    public Command pathFindToPose(Pose2d targetPose, PathConstraints constraints){
+        resetPose(getLLPose());
+        return AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
+    }
+
+    public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints){
+        return AutoBuilder.followPath(autoAlignPath);
     }
 
     /**

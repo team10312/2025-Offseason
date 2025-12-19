@@ -11,6 +11,7 @@ import java.util.function.BiConsumer;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.PathfindingCommand;
 
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -34,6 +35,7 @@ import frc.robot.commands.ResetElevator;
 import frc.robot.subsystems.Leds;
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
+import com.pathplanner.lib.auto.NamedCommands;
 
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -65,6 +67,7 @@ public class RobotContainer {
         SmartDashboard.putData("Auto Chooser", autoChooser);
     }
 
+
     private void configureBindings() {
         // Note that X is defined as forward according to WPILib convention,
         // and Y is defined as to the left according to WPILib convention.
@@ -81,7 +84,8 @@ public class RobotContainer {
         driver.circle().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-driver.getLeftY(), -driver.getLeftX()))
         ));
-
+        //Named Commands
+        NamedCommands.registerCommand("pathFindToPose", drivetrain.pathFindToPose(drivetrain.getAprilTagPose(), Constants.constraints));
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
         driver.options().and(driver.triangle()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
@@ -108,7 +112,10 @@ public class RobotContainer {
         //Leds
         operator.circle().onTrue(new SetLed(0, 0, 255));
         //Pathfinding
-        driver.R1().onTrue(new AutoAlign(drivetrain, drivetrain.getAprilTagPose(), Constants.constraints));
+        // driver.R2().whileTrue(new AutoAlign(drivetrain, drivetrain.getAprilTagPose(), Constants.constraints));
+        // driver.R1().whileTrue(AutoBuilder.pathfindToPose(drivetrain.getAprilTagPose(), Constants.constraints, 0.0));
+        driver.R1().whileTrue(drivetrain.pathFindToPose(drivetrain.getAprilTagPose(), Constants.constraints));
+        driver.L2().whileTrue(drivetrain.pathOnTheFly(drivetrain.getAprilTagPose(), Constants.constraints));
 
 
         //Shooter/Intake

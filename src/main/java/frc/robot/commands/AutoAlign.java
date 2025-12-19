@@ -4,16 +4,26 @@
 
 package frc.robot.commands;
 
+import java.util.List;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.PathfindingCommand;
+import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.Waypoint;
 
 import edu.wpi.first.math.controller.HolonomicDriveController;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
+import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Elevator;
@@ -24,7 +34,6 @@ public class AutoAlign extends Command {
     private final CommandSwerveDrivetrain drivetrain;
     private final Pose2d targetPose;
     private final PathConstraints constraints;
-    private Command pathFollowingCommand;
 
   /**
    * Creates a new ExampleCommand.
@@ -35,7 +44,6 @@ public class AutoAlign extends Command {
         this.drivetrain = drivetrain;
         this.targetPose = targetPose;
         this.constraints = constraints;
-
         // addRequirements(drivetrain);
     // Use addRequirements() here to declare subsystem dependencies.
   }
@@ -43,11 +51,12 @@ public class AutoAlign extends Command {
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
+    // Create the path using the waypoints created above
+    drivetrain.autoAlignPath.preventFlipping = true;
     drivetrain.resetPose(drivetrain.getLLPose());
-    pathFollowingCommand = AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
-    // pathFollowingCommand.schedule();
-    pathFollowingCommand.alongWith(PathfindingCommand.warmupCommand());
     drivetrain.pathScheduled = true;
+    drivetrain.pathFindToPose(targetPose, constraints).schedule();;
+    // drivetrain.pathScheduled = AutoBuilder.isPathfindingConfigured();
   }
 
   // Called every time the scheduler runs while the command is scheduled.
