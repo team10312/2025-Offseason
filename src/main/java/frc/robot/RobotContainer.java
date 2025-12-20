@@ -23,15 +23,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.commands.SetAlgaeArmDegrees;
-import frc.robot.commands.SetShooterSpeed;
-import frc.robot.commands.SetElevatorInches;
-import frc.robot.commands.SetElevatorPercent;
-import frc.robot.commands.SetIntakeSpeed;
 import frc.robot.commands.SetLed;
-import frc.robot.commands.AutoAlign;
-import frc.robot.commands.IncrementElevatorInches;
-import frc.robot.commands.ResetElevator;
 import frc.robot.subsystems.Leds;
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
@@ -97,32 +89,15 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
-
-        //Elevator
-        // operator.circle().onTrue(new ResetElevator());//home pos
-        // operator.cross().onTrue(new SetElevatorInches(8));
-        // operator.square().onTrue(new SetElevatorInches(15.5));
-        // operator.triangle().onTrue(new SetElevatorInches(25));
-        // operator.povUp().onTrue(new IncrementElevatorInches(1));
-        // operator.povDown().onTrue(new IncrementElevatorInches(-1));
         
 
-        //Algae Arm
-        // operator.square().onTrue(new SetAlgaeArmDegrees(10));
-        //Leds
         operator.circle().onTrue(new SetLed(0, 0, 255));
         //Pathfinding
-        // driver.R2().whileTrue(new AutoAlign(drivetrain, drivetrain.getAprilTagPose(), Constants.constraints));
-        // driver.R1().whileTrue(AutoBuilder.pathfindToPose(drivetrain.getAprilTagPose(), Constants.constraints, 0.0));
         driver.R1().whileTrue(drivetrain.pathFindToPose(drivetrain.getAprilTagPose(), Constants.constraints));
         driver.L2().whileTrue(drivetrain.pathOnTheFly(drivetrain.getAprilTagPose(), Constants.constraints));
 
 
-        //Shooter/Intake
-        // operator.R2().whileTrue(new SetShooterSpeed(0.15, 0.15));
-        // operator.L2().onTrue(new SetIntakeSpeed(0.35, 0.35));
-        // operator.R3().whileTrue(new SetIntakeSpeed(-0.1, -0.1)); // Reject Note
-        // operator.L3().whileTrue(new SetShooterSpeed(0.1, 0.1));
+
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
