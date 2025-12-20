@@ -34,8 +34,6 @@ import com.pathplanner.lib.config.PIDConstants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
-import edu.wpi.first.math.util.Units;
-
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
@@ -289,6 +287,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints){
+        resetPose(getLLPose());
         return AutoBuilder.followPath(autoAlignPath);
     }
 
