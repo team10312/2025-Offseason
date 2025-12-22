@@ -22,6 +22,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
@@ -38,6 +40,8 @@ import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.path.Waypoint;
+import com.pathplanner.lib.util.PathPlannerLogging;
+import org.littletonrobotics.junction.Logger;
 
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
@@ -220,11 +224,11 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     
 
     public Pose2d getLLPose(){
-        return LimelightHelpers.getBotPose2d("limelight-low");
+        return new Pose2d(LimelightHelpers.getBotPose2d(Constants.limelightName).getX(), LimelightHelpers.getBotPose2d(Constants.limelightName).getY(), LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d());
     }
 
     public Pose2d getAprilTagPose(){
-        return LimelightHelpers.getTargetPose3d_RobotSpace("limelight-low").toPose2d();
+        return new Pose2d(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d());
     }
 
     // Apply the chassis speeds
@@ -266,30 +270,77 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         this.setControl(ppApplySpeeds.withSpeeds(new ChassisSpeeds(0.0, 0.0, 0.0)));
     }
 
-    PathConstraints constraints = new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI); // The constraints for this path.
-
-
-    List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
-        getLLPose(),
-        getAprilTagPose()
-      );
-
-    public PathPlannerPath autoAlignPath = new PathPlannerPath(
-        waypoints,
-        constraints,
-        null, // The ideal starting state, this is only relevant for pre-planned paths, so can be null for on-the-fly paths.
-        new GoalEndState(0.0, Rotation2d.fromDegrees(-90)) // Goal end state. You can set a holonomic rotation here. If using a differential drivetrain, the rotation will have no effect.
-    );
-
     public Command pathFindToPose(Pose2d targetPose, PathConstraints constraints){
         resetPose(getLLPose());
         return AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
     }
 
-    public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints){
-        resetPose(getLLPose());
-        return AutoBuilder.followPath(autoAlignPath);
+    public boolean setTolerance(){
+        return 
+        Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX() - LimelightHelpers.getBotPose2d(Constants.limelightName).getX()) < 1
+        && Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY() - LimelightHelpers.getBotPose2d(Constants.limelightName).getY()) < 1
+        && Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d().getDegrees() - LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d().getDegrees()) < 2;
     }
+
+    PathPlannerPath autoLogPath;
+
+    public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints) {
+        Pose2d startPose = getLLPose();
+        
+        if (startPose == null) {
+            System.err.println("Cannot generate path.");
+            return new InstantCommand(); 
+        }
+
+        resetPose(startPose); 
+
+        List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
+            startPose,
+            targetPose 
+        );
+
+       PathPlannerPath autoAlignPath = new PathPlannerPath(
+            waypoints,
+            constraints,
+            null, 
+            new GoalEndState(0.0, targetPose.getRotation()) 
+        );
+
+        autoLogPath = autoAlignPath;
+
+        PathPlannerLogging.logActivePath(autoAlignPath);        
+        return AutoBuilder.followPath(autoAlignPath)
+        .until(() -> setTolerance())
+        .andThen(() -> stop());
+    }
+
+    // public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints) {
+    //     // Pose2d startPose = getLLPose();
+        
+    //     // if (startPose == null) {
+    //     //     System.err.println("Cannot generate path.");
+    //     //     return new InstantCommand(); 
+    //     // }
+
+    //     // resetPose(startPose); 
+
+    //     List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
+    //         getEstimatedPose(),
+    //         new Pose2d(getEstimatedPose().getX()+2, getEstimatedPose().getY(), getEstimatedPose().getRotation()) 
+    //     );
+
+    //    PathPlannerPath autoAlignPath = new PathPlannerPath(
+    //         waypoints,
+    //         constraints,
+    //         null, 
+    //         new GoalEndState(0.0, getEstimatedPose().getRotation()) 
+    //     );
+
+    //     autoLogPath = autoAlignPath;
+
+    //     PathPlannerLogging.logActivePath(autoAlignPath);        
+    //     return AutoBuilder.followPath(autoAlignPath);
+    // }
 
     /**
      * Returns a command that applies the specified control request to this swerve drivetrain.
@@ -347,6 +398,42 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         SmartDashboard.putNumber("Tag X", getAprilTagPose().getX());
         SmartDashboard.putNumber("Tag Y", getAprilTagPose().getY());
         SmartDashboard.putBoolean("Path Scheduled?", pathScheduled);
+        SmartDashboard.putString("Poses", "*****" + autoLogPath.getPathPoses().toString());
+
+        //Logging
+        Logger.recordOutput("RobotPose", getEstimatedPose());
+        /* ===================== CORE ODOMETRY ===================== */
+    Logger.recordOutput("Drivetrain/Pose", getEstimatedPose());
+    Logger.recordOutput("Drivetrain/GyroYaw", getEstimatedPose().getRotation());
+
+    /* ===================== CHASSIS SPEEDS ===================== */
+    Logger.recordOutput("Drivetrain/MeasuredSpeeds", getRobotRelativeSpeeds());
+
+    /* ===================== SWERVE MODULE STATES ===================== */
+    Logger.recordOutput("Drivetrain/ModuleStates", getState().ModuleStates);
+
+    /* ===================== VISION ===================== */
+    Logger.recordOutput("Vision/LimelightPose", getLLPose());
+    Logger.recordOutput("Vision/AprilTagPose", getAprilTagPose());
+
+    /* Odometry vs Vision delta (debug fusion) */
+    Logger.recordOutput(
+        "Vision/OdometryDelta",
+        getEstimatedPose().relativeTo(getLLPose())
+    );
+
+    /* ===================== PATHPLANNER ===================== */
+    if (autoLogPath != null) {
+        Logger.recordOutput(
+            "PathPlanner/ActivePath",
+            autoLogPath.getPathPoses().toString()
+        );
+    }
+
+    /* ===================== MATCH STATE ===================== */
+    Logger.recordOutput("Match/Enabled", DriverStation.isEnabled());
+    Logger.recordOutput("Match/Alliance", DriverStation.getAlliance().toString());
+
     }
 
     private void startSimThread() {

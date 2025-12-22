@@ -46,7 +46,7 @@ public class RobotContainer {
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
     private final CommandPS5Controller driver = new CommandPS5Controller(0);
-    private final CommandPS5Controller operator = new CommandPS5Controller(1);
+    // private final CommandPS5Controller operator = new CommandPS5Controller(1);
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
@@ -91,10 +91,10 @@ public class RobotContainer {
         //controls
         
 
-        operator.circle().onTrue(new SetLed(0, 0, 255));
+        // operator.circle().onTrue(new SetLed(0, 0, 255));
         //Pathfinding
-        driver.R1().whileTrue(drivetrain.pathFindToPose(drivetrain.getAprilTagPose(), Constants.constraints));
-        driver.L2().whileTrue(drivetrain.pathOnTheFly(drivetrain.getAprilTagPose(), Constants.constraints));
+        // driver.L2().whileTrue(drivetrain.pathFindToPose(drivetrain.getAprilTagPose(), Constants.constraints));
+        driver.R1().whileTrue(drivetrain.pathOnTheFly(drivetrain.getAprilTagPose(), Constants.constraints));
 
 
 

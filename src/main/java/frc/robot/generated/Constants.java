@@ -16,12 +16,8 @@ public class Constants {
      public static final double ROT_KP   = 4.0, ROT_KI   = 0.0, ROT_KD   = 0.15;
 
     //Pathfinding
-    public static Pose2d targetPose = LimelightHelpers.getTargetPose3d_CameraSpace("limelight-low").toPose2d(); // Robot Pose 2D
-    public static final PathConstraints constraints = new PathConstraints(3.0, 4.0,Units.degreesToRadians(540), Units.degreesToRadians(720));
-    public static Pose2d robotPose = LimelightHelpers.getBotPose2d("limelight-low");
-
-    
-
-
-    
+    public static String limelightName = "limelight-low";
+    public static Pose2d targetPose = LimelightHelpers.getTargetPose3d_CameraSpace(Constants.limelightName).toPose2d(); // Robot Pose 2D
+    public static final PathConstraints constraints = new PathConstraints(0.5, 0.5,Units.degreesToRadians(540), Units.degreesToRadians(720));
+    public static Pose2d robotPose = LimelightHelpers.getBotPose2d(Constants.limelightName);
 }
