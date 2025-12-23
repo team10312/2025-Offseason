@@ -507,6 +507,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     Logger.recordOutput("Match/Enabled", DriverStation.isEnabled());
     Logger.recordOutput("Match/Alliance", DriverStation.getAlliance().toString());
 
+    if (getAprilTagPose() != null || getAprilTagPose().getX() != 0.0){
+        SmartDashboard.putBoolean("Path Scheduled?", pathScheduled);
+    }
+    else{
+        pathScheduled = false;
+    }
+
     }
 
     private void startSimThread() {

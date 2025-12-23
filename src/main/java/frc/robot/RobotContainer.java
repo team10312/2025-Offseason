@@ -95,9 +95,9 @@ public class RobotContainer {
         
         // Simple drive to AprilTag - pure proportional control, no PathPlanner
         driver.R1().whileTrue(drivetrain.driveToAprilTag());
-
-
-
+        driver.R1().whileFalse(
+            Commands.runOnce(() -> drivetrain.pathScheduled = false)
+        );
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
