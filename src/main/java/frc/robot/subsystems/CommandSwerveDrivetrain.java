@@ -279,23 +279,21 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             // Get tag position relative to robot (meters and radians)
             Pose2d tagRelative = getAprilTagPose();
             
-            double tagX = tagRelative.getX();      // What Limelight says is X
-            double tagY = tagRelative.getY();      // What Limelight says is Y
+            double tagX = tagRelative.getX();      // What Limelight says is X (left/right)
+            double tagY = tagRelative.getY();      // What Limelight says is Y (forward/back)
             double tagAngle = tagRelative.getRotation().getRadians(); // Angle to face tag
-            
-            System.out.println("RAW LIMELIGHT: X=" + tagX + " Y=" + tagY + " Angle=" + Math.toDegrees(tagAngle));
             
             // Simple proportional control: velocity = error * gain
             // The "error" is how far the tag is from where we want it (origin)
             double kP_translation = 1.5;  // Gain for forward/strafe
             double kP_rotation = 2.0;     // Gain for rotation
             
-            // NOTE: Might need to swap X/Y depending on Limelight coordinate frame
-            double vx = tagX * kP_translation;   // Velocity in X direction
-            double vy = tagY * kP_translation;   // Velocity in Y direction
+            // LIMELIGHT COORDINATE FRAME: Y is forward/back, X is left/right
+            // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-)
+            // Need to negate Y because Limelight Y is negative when tag is in front
+            double vx = -tagY * kP_translation;  // Use -Y for forward/back
+            double vy = tagX * kP_translation;   // Use X for left/right
             double vRot = tagAngle * kP_rotation; // Angular velocity to face tag
-            
-            System.out.println("COMMANDED SPEEDS: vX=" + vx + " vY=" + vy + " vRot=" + vRot);
             
             // Limit speeds for safety
             double maxSpeed = 2.0;        // meters per second
