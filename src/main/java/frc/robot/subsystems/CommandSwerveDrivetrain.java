@@ -283,10 +283,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             double tagY = tagRelative.getY();      // What Limelight says is Y (forward/back)
             double tagAngle = tagRelative.getRotation().getRadians(); // Angle to face tag
             
-            // Simple proportional control: velocity = error * gain
-            // The "error" is how far the tag is from where we want it (origin)
-            double kP_translation = 1.5;  // Gain for forward/strafe
-            double kP_rotation = 2.0;     // Gain for rotation
+            // Calculate distance to tag for speed scaling
+            double distance = Math.sqrt(tagX * tagX + tagY * tagY);
+            
+            // Proportional control gains - tuned for smooth approach
+            double kP_translation = 1.2;  // Reduced from 1.5 for smoother motion
+            double kP_rotation = 1.5;     // Reduced from 2.0 for gentler turns
             
             // LIMELIGHT COORDINATE FRAME: Y is forward/back, X is left/right
             // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-)
@@ -295,9 +297,23 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             double vy = -tagX * kP_translation;  // Use -X for left/right
             double vRot = tagAngle * kP_rotation; // Angular velocity to face tag
             
-            // Limit speeds for safety
-            double maxSpeed = 2.0;        // meters per second
-            double maxRotSpeed = 3.0;     // radians per second
+            // Speed limiting based on distance - slow down when close
+            double maxSpeed;
+            double maxRotSpeed;
+            
+            if (distance < 0.5) {
+                // Very close - move slowly
+                maxSpeed = 0.5;
+                maxRotSpeed = 1.0;
+            } else if (distance < 1.0) {
+                // Medium distance - moderate speed
+                maxSpeed = 1.0;
+                maxRotSpeed = 1.5;
+            } else {
+                // Far away - full speed
+                maxSpeed = 2.0;
+                maxRotSpeed = 2.5;
+            }
             
             vx = Math.max(-maxSpeed, Math.min(maxSpeed, vx));
             vy = Math.max(-maxSpeed, Math.min(maxSpeed, vy));
@@ -306,6 +322,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             // Debug output
             SmartDashboard.putNumber("Tag/X", tagX);
             SmartDashboard.putNumber("Tag/Y", tagY);
+            SmartDashboard.putNumber("Tag/Distance", distance);
             SmartDashboard.putNumber("Tag/Angle", Math.toDegrees(tagAngle));
             SmartDashboard.putNumber("Cmd/VX", vx);
             SmartDashboard.putNumber("Cmd/VY", vy);
