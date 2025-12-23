@@ -4,30 +4,37 @@
 
 package frc.robot.commands;
 
+import frc.robot.subsystems.ExampleSubsystem;
+import frc.robot.subsystems.Leds;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Elevator;
 
 /** An example command that uses an example subsystem. */
-public class IncrementElevatorInches extends Command {
+public class SetLedColor extends Command {
   @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
-  private final Elevator m_Elevator = new Elevator();
-  private final double offset;
-  private final double oldInches = m_Elevator.getInches();
+  private final Leds m_leds;
+  private final int r;
+  private final int g;
+  private final int b;
 
   /**
    * Creates a new ExampleCommand.
    *
    * @param subsystem The subsystem used by this command.
    */
-  public IncrementElevatorInches(double offset) {
-    this.offset = offset;
+  public SetLedColor(Leds subsystem, int r, int g, int b) {
+    m_leds = subsystem;
+    this.r = r;
+    this.g = g;
+    this.b = b;
+
     // Use addRequirements() here to declare subsystem dependencies.
+    addRequirements(subsystem);
   }
 
   // Called when the command is initially scheduled.
   @Override
-  public void initialize() {
-    m_Elevator.setInches(m_Elevator.getInches() + offset);
+  public void initialize(){
+    m_leds.setColor(r, g,  b);
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -41,6 +48,6 @@ public class IncrementElevatorInches extends Command {
   // Returns true when the command should end.
   @Override
   public boolean isFinished() {
-    return Math.abs((m_Elevator.getInches()) - (oldInches + offset)) <= 1;
+    return true;
   }
 }
