@@ -290,9 +290,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             
             // LIMELIGHT COORDINATE FRAME: Y is forward/back, X is left/right
             // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-)
-            // Need to negate Y because Limelight Y is negative when tag is in front
+            // Negate both because: Y is negative when tag is in front, X is positive when tag is to the right
             double vx = -tagY * kP_translation;  // Use -Y for forward/back
-            double vy = tagX * kP_translation;   // Use X for left/right
+            double vy = -tagX * kP_translation;  // Use -X for left/right
             double vRot = tagAngle * kP_rotation; // Angular velocity to face tag
             
             // Limit speeds for safety
