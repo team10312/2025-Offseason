@@ -56,6 +56,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
 
+    private boolean m_isPathFollowing = false;
+
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
     private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
     /* Red alliance sees forward as 180 degrees (toward blue alliance wall) */
@@ -71,6 +73,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     //Boolean Checks
     public boolean pathScheduled = false;
+    private boolean driveToTagRunning = false;
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -276,6 +279,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      */
     public Command driveToAprilTag() {
         return run(() -> {
+            driveToTagRunning = true;
+            
             // Get tag position relative to robot (meters and radians)
             Pose2d tagRelative = getAprilTagPose();
             
@@ -331,7 +336,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             // Drive using robot-relative speeds
             // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-), vRot = CCW(+)/CW(-)
             driveRobotRelative(new ChassisSpeeds(vx, vy, vRot));
-        });
+        }).finallyDo(() -> driveToTagRunning = false);
     }
 
     public Command pathFindToPose(Pose2d targetPose, PathConstraints constraints){
@@ -462,6 +467,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         SmartDashboard.putNumber("Tag X", getAprilTagPose().getX());
         SmartDashboard.putNumber("Tag Y", getAprilTagPose().getY());
         SmartDashboard.putBoolean("Path Scheduled?", pathScheduled);
+        
+        // Drive to tag command status
+        SmartDashboard.putBoolean("DriveToTag/Running", driveToTagRunning);
+        SmartDashboard.putBoolean("DriveToTag/TargetVisible", LimelightHelpers.getTV(Constants.limelightName));
         // SmartDashboard.putString("Poses", "*****" + autoLogPath.getPathPoses().toString()); // Disabled - not using PathPlanner
 
         //Logging
