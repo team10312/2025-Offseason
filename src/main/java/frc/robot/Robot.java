@@ -29,7 +29,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // REAL ROBOT
-      Logger.addDataReceiver(new WPILOGWriter());   // USB (/U/logs)
+      // Logger.addDataReceiver(new WPILOGWriter());   // USB (/U/logs) - DISABLED: No USB drive
       Logger.addDataReceiver(new NT4Publisher());   // Live NT4
     } else if (replayMode) {
       // REPLAY SIMULATION

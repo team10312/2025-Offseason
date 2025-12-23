@@ -279,18 +279,23 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             // Get tag position relative to robot (meters and radians)
             Pose2d tagRelative = getAprilTagPose();
             
-            double tagX = tagRelative.getX();      // Forward/back distance to tag
-            double tagY = tagRelative.getY();      // Left/right distance to tag
+            double tagX = tagRelative.getX();      // What Limelight says is X
+            double tagY = tagRelative.getY();      // What Limelight says is Y
             double tagAngle = tagRelative.getRotation().getRadians(); // Angle to face tag
+            
+            System.out.println("RAW LIMELIGHT: X=" + tagX + " Y=" + tagY + " Angle=" + Math.toDegrees(tagAngle));
             
             // Simple proportional control: velocity = error * gain
             // The "error" is how far the tag is from where we want it (origin)
             double kP_translation = 1.5;  // Gain for forward/strafe
             double kP_rotation = 2.0;     // Gain for rotation
             
-            double vx = tagX * kP_translation;   // Velocity to reach tag in X
-            double vy = tagY * kP_translation;   // Velocity to reach tag in Y
+            // NOTE: Might need to swap X/Y depending on Limelight coordinate frame
+            double vx = tagX * kP_translation;   // Velocity in X direction
+            double vy = tagY * kP_translation;   // Velocity in Y direction
             double vRot = tagAngle * kP_rotation; // Angular velocity to face tag
+            
+            System.out.println("COMMANDED SPEEDS: vX=" + vx + " vY=" + vy + " vRot=" + vRot);
             
             // Limit speeds for safety
             double maxSpeed = 2.0;        // meters per second
@@ -309,6 +314,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             SmartDashboard.putNumber("Cmd/VRot", vRot);
             
             // Drive using robot-relative speeds
+            // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-), vRot = CCW(+)/CW(-)
             driveRobotRelative(new ChassisSpeeds(vx, vy, vRot));
         });
     }
@@ -441,7 +447,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         SmartDashboard.putNumber("Tag X", getAprilTagPose().getX());
         SmartDashboard.putNumber("Tag Y", getAprilTagPose().getY());
         SmartDashboard.putBoolean("Path Scheduled?", pathScheduled);
-        SmartDashboard.putString("Poses", "*****" + autoLogPath.getPathPoses().toString());
+        // SmartDashboard.putString("Poses", "*****" + autoLogPath.getPathPoses().toString()); // Disabled - not using PathPlanner
 
         //Logging
         Logger.recordOutput("RobotPose", getEstimatedPose());
