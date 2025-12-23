@@ -92,9 +92,9 @@ public class RobotContainer {
         
 
         // operator.circle().onTrue(new SetLed(0, 0, 255));
-        //Pathfinding
-        // driver.L2().whileTrue(drivetrain.pathFindToPose(drivetrain.getAprilTagPose(), Constants.constraints));
-        driver.R1().whileTrue(drivetrain.pathOnTheFly(drivetrain.getAprilTagPose(), Constants.constraints));
+        
+        // Simple drive to AprilTag - pure proportional control, no PathPlanner
+        driver.R1().whileTrue(drivetrain.driveToAprilTag());
 
 
 

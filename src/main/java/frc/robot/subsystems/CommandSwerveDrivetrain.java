@@ -270,6 +270,49 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         this.setControl(ppApplySpeeds.withSpeeds(new ChassisSpeeds(0.0, 0.0, 0.0)));
     }
 
+    /**
+     * Simple proportional control to drive to AprilTag
+     * Uses only robot-relative control - no field coordinates needed
+     */
+    public Command driveToAprilTag() {
+        return run(() -> {
+            // Get tag position relative to robot (meters and radians)
+            Pose2d tagRelative = getAprilTagPose();
+            
+            double tagX = tagRelative.getX();      // Forward/back distance to tag
+            double tagY = tagRelative.getY();      // Left/right distance to tag
+            double tagAngle = tagRelative.getRotation().getRadians(); // Angle to face tag
+            
+            // Simple proportional control: velocity = error * gain
+            // The "error" is how far the tag is from where we want it (origin)
+            double kP_translation = 1.5;  // Gain for forward/strafe
+            double kP_rotation = 2.0;     // Gain for rotation
+            
+            double vx = tagX * kP_translation;   // Velocity to reach tag in X
+            double vy = tagY * kP_translation;   // Velocity to reach tag in Y
+            double vRot = tagAngle * kP_rotation; // Angular velocity to face tag
+            
+            // Limit speeds for safety
+            double maxSpeed = 2.0;        // meters per second
+            double maxRotSpeed = 3.0;     // radians per second
+            
+            vx = Math.max(-maxSpeed, Math.min(maxSpeed, vx));
+            vy = Math.max(-maxSpeed, Math.min(maxSpeed, vy));
+            vRot = Math.max(-maxRotSpeed, Math.min(maxRotSpeed, vRot));
+            
+            // Debug output
+            SmartDashboard.putNumber("Tag/X", tagX);
+            SmartDashboard.putNumber("Tag/Y", tagY);
+            SmartDashboard.putNumber("Tag/Angle", Math.toDegrees(tagAngle));
+            SmartDashboard.putNumber("Cmd/VX", vx);
+            SmartDashboard.putNumber("Cmd/VY", vy);
+            SmartDashboard.putNumber("Cmd/VRot", vRot);
+            
+            // Drive using robot-relative speeds
+            driveRobotRelative(new ChassisSpeeds(vx, vy, vRot));
+        });
+    }
+
     public Command pathFindToPose(Pose2d targetPose, PathConstraints constraints){
         resetPose(getLLPose());
         return AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
