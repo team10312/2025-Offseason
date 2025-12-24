@@ -19,10 +19,12 @@ import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-
-
+import frc.robot.commands.SetLedColor;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.Leds;
+
+import com.ctre.phoenix.led.CANdle;
 
 public class RobotContainer {
     private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
@@ -43,6 +45,8 @@ public class RobotContainer {
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
     private final SendableChooser<Command> autoChooser;
+
+    private final Leds m_leds = Leds.getInstance();
 
 
     public RobotContainer() {
@@ -81,6 +85,7 @@ public class RobotContainer {
         //controls
 
         //Leds
+        driver.triangle().onTrue(new SetLedColor(m_leds, 0, 0, 255));
         
 
         drivetrain.registerTelemetry(logger::telemeterize);

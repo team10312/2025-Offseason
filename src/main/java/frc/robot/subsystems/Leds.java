@@ -15,7 +15,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Leds extends SubsystemBase {
     private static Leds mInstance;
 
-    private static Leds getInstance(){
+    public static Leds getInstance(){
         if(mInstance == null){
             mInstance = new Leds();
         }
@@ -27,12 +27,12 @@ public class Leds extends SubsystemBase {
 
     public Leds() {
 
-    m_leds = new CANdle(0, "rio");
+    m_leds = new CANdle(44, "rio");
 
     CANdleConfiguration configAll = new CANdleConfiguration();
     configAll.statusLedOffWhenActive = true;
     configAll.disableWhenLOS = false;
-    configAll.stripType = LEDStripType.RGB;
+    configAll.stripType = LEDStripType.GRB;
     configAll.brightnessScalar = 0.1;
     configAll.vBatOutputMode = VBatOutputMode.Modulated;
     m_leds.configAllSettings(configAll, 100);
