@@ -293,7 +293,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             
             // Proportional control gains - tuned for smooth approach
             double kP_translation = 1.2;  // Reduced from 1.5 for smoother motion
-            double kP_rotation = 1.5;     // Reduced from 2.0 for gentler turns
+            double kP_rotation = 1.0;     // Reduced from 2.0 for gentler turns
             
             // LIMELIGHT COORDINATE FRAME: Y is forward/back, X is left/right
             // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-)
@@ -351,37 +351,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         && Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d().getDegrees() - LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d().getDegrees()) < 2;
     }
 
-    PathPlannerPath autoLogPath;
 
-    public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints) {
-        Pose2d startPose = getLLPose();
-        
-        if (startPose == null) {
-            System.err.println("Cannot generate path.");
-            return new InstantCommand(); 
-        }
-
-        resetPose(startPose); 
-
-        List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
-            startPose,
-            targetPose 
-        );
-
-       PathPlannerPath autoAlignPath = new PathPlannerPath(
-            waypoints,
-            constraints,
-            null, 
-            new GoalEndState(0.0, targetPose.getRotation()) 
-        );
-
-        autoLogPath = autoAlignPath;
-
-        PathPlannerLogging.logActivePath(autoAlignPath);        
-        return AutoBuilder.followPath(autoAlignPath)
-        .until(() -> setTolerance())
-        .andThen(() -> stop());
-    }
 
     // public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints) {
     //     // Pose2d startPose = getLLPose();
@@ -495,13 +465,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         getEstimatedPose().relativeTo(getLLPose())
     );
 
-    /* ===================== PATHPLANNER ===================== */
-    if (autoLogPath != null) {
-        Logger.recordOutput(
-            "PathPlanner/ActivePath",
-            autoLogPath.getPathPoses().toString()
-        );
-    }
 
     /* ===================== MATCH STATE ===================== */
     Logger.recordOutput("Match/Enabled", DriverStation.isEnabled());
