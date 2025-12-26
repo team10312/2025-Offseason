@@ -48,7 +48,7 @@ public class Leds extends SubsystemBase {
         config.stripType = LEDStripType.RGB; 
         config.brightnessScalar = 1.0;
         config.vBatOutputMode = VBatOutputMode.Modulated;
-
+        m_candle.configAllSettings(config, 100);
   }
 
   public void setLeds(int r, int g, int b){

@@ -235,7 +235,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     // Apply the chassis speeds
-    private final SwerveRequest.ApplyRobotSpeeds ppApplySpeeds = new SwerveRequest.ApplyRobotSpeeds();
+    private final SwerveRequest.ApplyRobotSpeeds ppApplySpeeds = new SwerveRequest.ApplyRobotSpeeds()
+        .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
+    
+    // Robot-centric drive request (matches FieldCentric config)
+    private final SwerveRequest.RobotCentric robotCentricDrive = new SwerveRequest.RobotCentric()
+        .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
 
     public void driveRobotRelative(ChassisSpeeds speeds){
         this.setControl(ppApplySpeeds.withSpeeds(speeds));
@@ -281,67 +286,71 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return run(() -> {
             driveToTagRunning = true;
             
+            // Stop if no tag visible
+            if (!LimelightHelpers.getTV(Constants.limelightName)) {
+                this.setControl(robotCentricDrive
+                    .withVelocityX(0)
+                    .withVelocityY(0)
+                    .withRotationalRate(0));
+                return;
+            }
+            
             // Get tag position relative to robot (meters and radians)
             Pose2d tagRelative = getAprilTagPose();
             
-            double tagX = tagRelative.getX();      // What Limelight says is X (left/right)
-            double tagY = tagRelative.getY();      // What Limelight says is Y (forward/back)
-            double tagAngle = tagRelative.getRotation().getRadians(); // Angle to face tag
+            double tagX = tagRelative.getX();
+            double tagY = tagRelative.getY();
             
             // Calculate distance to tag for speed scaling
             double distance = Math.sqrt(tagX * tagX + tagY * tagY);
             
-            // Proportional control gains - tuned for smooth approach
-            double kP_translation = 1.2;  // Reduced from 1.5 for smoother motion
-            double kP_rotation = 1.0;     // Reduced from 2.0 for gentler turns
+            // Proportional control gains
+            double kP_translation = 0.8;
             
-            // LIMELIGHT COORDINATE FRAME: Y is forward/back, X is left/right
-            // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-)
-            // Negate both because: Y is negative when tag is in front, X is positive when tag is to the right
-            double vx = -tagY * kP_translation;  // Use -Y for forward/back
-            double vy = -tagX * kP_translation;  // Use -X for left/right
-            double vRot = tagAngle * kP_rotation; // Angular velocity to face tag
+            // Constant forward + tag-based left/right
+            double vx = 0.5;  // Constant forward speed
+            double vy = -tagX * kP_translation;  // Left/right uses tag data
+            double vRot = 0;  // No rotation for now
             
             // Speed limiting based on distance - slow down when close
             double maxSpeed;
-            double maxRotSpeed;
-            
             if (distance < 0.5) {
-                // Very close - move slowly
-                maxSpeed = 0.5;
-                maxRotSpeed = 1.0;
+                maxSpeed = 0.5;  // Very close - move slowly
             } else if (distance < 1.0) {
-                // Medium distance - moderate speed
-                maxSpeed = 1.0;
-                maxRotSpeed = 1.5;
+                maxSpeed = 1.0;  // Medium distance
             } else {
-                // Far away - full speed
-                maxSpeed = 2.0;
-                maxRotSpeed = 2.5;
+                maxSpeed = 2.0;  // Far away
             }
             
             vx = Math.max(-maxSpeed, Math.min(maxSpeed, vx));
             vy = Math.max(-maxSpeed, Math.min(maxSpeed, vy));
-            vRot = Math.max(-maxRotSpeed, Math.min(maxRotSpeed, vRot));
             
             // Debug output
             SmartDashboard.putNumber("Tag/X", tagX);
             SmartDashboard.putNumber("Tag/Y", tagY);
             SmartDashboard.putNumber("Tag/Distance", distance);
-            SmartDashboard.putNumber("Tag/Angle", Math.toDegrees(tagAngle));
             SmartDashboard.putNumber("Cmd/VX", vx);
             SmartDashboard.putNumber("Cmd/VY", vy);
-            SmartDashboard.putNumber("Cmd/VRot", vRot);
             
-            // Drive using robot-relative speeds
-            // ChassisSpeeds: vx = forward(+)/back(-), vy = left(+)/right(-), vRot = CCW(+)/CW(-)
-            driveRobotRelative(new ChassisSpeeds(vx, vy, vRot));
-        }).finallyDo(() -> driveToTagRunning = false);
+            // Drive using robot-centric request (same config as FieldCentric)
+            this.setControl(robotCentricDrive
+                .withVelocityX(vx)
+                .withVelocityY(vy)
+                .withRotationalRate(vRot));
+        })
+        .finallyDo(() -> driveToTagRunning = false);
     }
 
     public Command pathFindToPose(Pose2d targetPose, PathConstraints constraints){
         resetPose(getLLPose());
         return AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
+    }
+
+    public boolean isAtTarget() {
+        Pose2d tagRelative = getAprilTagPose();
+        double distance = Math.sqrt(tagRelative.getX() * tagRelative.getX() + 
+                                    tagRelative.getY() * tagRelative.getY());
+        return distance < 1.0;  // Within 1 meter of target
     }
 
     public boolean setTolerance(){
