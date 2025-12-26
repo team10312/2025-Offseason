@@ -4,28 +4,16 @@
 
 package frc.robot.subsystems;
 
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.controls.VelocityVoltage;
-import frc.robot.generated.TunerConstants;
-import frc.robot.generated.Constants;
 
-import com.ctre.phoenix.led.*;
-import com.ctre.phoenix.led.CANdle.LEDStripType;
-import com.ctre.phoenix.led.CANdle.VBatOutputMode;
 
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
-import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.hardware.CANdle;
+import com.ctre.phoenix6.signals.RGBWColor;
+import com.ctre.phoenix6.signals.StatusLedWhenActiveValue;
+import com.ctre.phoenix6.signals.StripTypeValue;
+import com.ctre.phoenix6.configs.CANdleConfiguration;
+import com.ctre.phoenix6.controls.SolidColor;
 
-import java.lang.reflect.Member;
-
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
-// import com.ctre.phoenix6.controls.DutyCycleOut;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Leds extends SubsystemBase {
@@ -43,16 +31,18 @@ public class Leds extends SubsystemBase {
 
     public Leds() {
         m_candle = new CANdle(44, "rio");
+        var cfg = new CANdleConfiguration();
+        /* set the LED strip type and brightness */
+        cfg.LED.StripType = StripTypeValue.GRB;
+        cfg.LED.BrightnessScalar = 0.5;
+        /* disable status LED when being controlled */
+        cfg.CANdleFeatures.StatusLedWhenActive = StatusLedWhenActiveValue.Disabled;
         ledCount = 20;
-        CANdleConfiguration config = new CANdleConfiguration();
-        config.stripType = LEDStripType.RGB; 
-        config.brightnessScalar = 1.0;
-        config.vBatOutputMode = VBatOutputMode.Modulated;
-        m_candle.configAllSettings(config, 100);
+        m_candle.getConfigurator().apply(cfg);
   }
 
   public void setLeds(int r, int g, int b){
-    m_candle.setLEDs(r, g, b, 0, 0, ledCount);
+    m_candle.setControl(new SolidColor(0, ledCount+7).withColor(new RGBWColor(r, g, b)));
   }
 
   @Override
