@@ -28,7 +28,7 @@ public class Leds extends SubsystemBase {
     }
 
     private final CANdle m_candle;
-    private final int ledCount = 20;
+    private final int ledCount = 65;
 
     public Leds() {
 
