@@ -309,7 +309,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             
             double vx = 0.5;
             double vy = -tagX * kP_strafe; 
-            double vRot = tagX * kP_rotation;
+            double vRot = -tagX * kP_rotation;
             
             double maxSpeed;
             if (distance < 0.5) {
