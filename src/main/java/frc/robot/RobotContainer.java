@@ -19,7 +19,10 @@ import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
+import frc.robot.commands.AnimateLed;
+import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
+import frc.robot.commands.StopLed;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds;
@@ -85,8 +88,9 @@ public class RobotContainer {
         //controls
 
         //Leds
-        driver.triangle().onTrue(new SetLedColor(m_leds, 0, 0, 255));
-        
+        driver.triangle().onTrue(new SetLedColor(0, 0, 255));
+        driver.square().onTrue(new AnimateLed(AnimationType.Rainbow));
+        driver.circle().onTrue(new StopLed());
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }

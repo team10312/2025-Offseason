@@ -36,6 +36,63 @@ public class Leds extends SubsystemBase {
     private final CANdle m_candle;
     private final int ledCount = 65;
 
+    private enum LedMode { Unknown, SolidColor, Animation }
+
+    private LedMode m_ledMode = LedMode.Unknown;
+    private AnimationType m_currentAnimation = null;
+    private boolean m_hasColor = false;
+    private int m_r = 0;
+    private int m_g = 0;
+    private int m_b = 0;
+
+    public String getLedState() {
+        LedMode mode = m_ledMode;
+        AnimationType anim = m_currentAnimation;
+
+        if (mode == LedMode.Animation) {
+            if (m_hasColor) {
+                return "Animation=" + (anim == null ? "null" : anim.name())
+                        + " RGB=(" + m_r + "," + m_g + "," + m_b + ")";
+            }
+            return "Animation=" + (anim == null ? "null" : anim.name()) + " RGB=(none)";
+        }
+
+        if (mode == LedMode.SolidColor) {
+            return "SolidColor RGB=(" + m_r + "," + m_g + "," + m_b + ")";
+        }
+
+        return "Unknown";
+    }
+
+    public boolean isAnimationRunning() {
+        return m_ledMode == LedMode.Animation;
+    }
+
+    public AnimationType getCurrentAnimation() {
+        return m_currentAnimation;
+    }
+
+    private void setTrackedSolid(int r, int g, int b) {
+        m_ledMode = LedMode.SolidColor;
+        m_currentAnimation = AnimationType.None;
+        m_hasColor = true;
+        m_r = r;
+        m_g = g;
+        m_b = b;
+    }
+
+    private void setTrackedAnimation(AnimationType type) {
+        m_ledMode = LedMode.Animation;
+        m_currentAnimation = type;
+    }
+
+    private void clearTrackedColor() {
+        m_hasColor = false;
+        m_r = 0;
+        m_g = 0;
+        m_b = 0;
+    }
+
     public Leds() {
 
         m_candle = new CANdle(44, "rio");
@@ -50,15 +107,7 @@ public class Leds extends SubsystemBase {
         m_candle.getConfigurator().apply(cfg);
   }
 
-  public void setColor(int r, int g, int b){
-    m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(r, g, b)));
-  }
-
-  public void off(){
-    m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(0, 0, 0, 0)));
-  }
-
-  private enum AnimationType {
+  public enum AnimationType {
     None(false),
     ColorFlow(true),
     Fire(false),
@@ -79,6 +128,11 @@ public class Leds extends SubsystemBase {
 
   private void setAnimationInternal(AnimationType type, RGBWColor color) {
     m_candle.setControl(new EmptyAnimation(0));
+
+    setTrackedAnimation(type);
+    if (color == null) {
+        clearTrackedColor();
+    }
 
     switch (type) {
 
@@ -144,13 +198,29 @@ public class Leds extends SubsystemBase {
   }
 
   public void setAnimation(AnimationType type, int r, int g, int b){
+    m_hasColor = true;
+    m_r = r;
+    m_g = g;
+    m_b = b;
+
     setAnimationInternal(type, new RGBWColor(r, g, b));
+  }
+
+  public void setColor(int r, int g, int b){
+    setAnimation(AnimationType.None);
+    m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(r, g, b)));
+    setTrackedSolid(r, g, b);
+  }
+
+  public void off(){
+    m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(0, 0, 0, 0)));
+    setAnimation(AnimationType.None);
+    setTrackedSolid(0, 0, 0);
   }
   
   @Override
   public void periodic() {
-
+    // STATE TRACKING -> SmartDashboard (added)
+    SmartDashboard.putString("LED/State", getLedState());
   }
-
-
 }
