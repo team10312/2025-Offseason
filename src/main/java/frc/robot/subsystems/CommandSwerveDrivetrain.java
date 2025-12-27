@@ -302,40 +302,27 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             double tagX = tagRelative.getX();
             double tagY = tagRelative.getY();
             
-            // Calculate distance to tag for speed scaling
             double distance = Math.sqrt(tagX * tagX + tagY * tagY);
             
-            // Proportional control gains - TUNE THESE
-            double kP_strafe = 0.8;      // How aggressively to strafe left/right
-            double kP_rotation = 1.5;    // How aggressively to rotate to face tag
+            double kP_strafe = 0.8;
+            double kP_rotation = 1.5;
             
-            // Constant forward + tag-based left/right + rotation to face tag
-            double vx = 0.5;                    // Constant forward speed (m/s)
-            double vy = -tagX * kP_strafe;      // Strafe to center on tag
-            double vRot = tagX * kP_rotation;   // Rotate to face tag (rad/s)
+            double vx = 0.5;
+            double vy = -tagX * kP_strafe; 
+            double vRot = tagX * kP_rotation;
             
-            // Speed limiting based on distance - slow down when close
             double maxSpeed;
             if (distance < 0.5) {
-                maxSpeed = 0.5;  // Very close - move slowly
+                maxSpeed = 0.5;  
             } else if (distance < 1.0) {
-                maxSpeed = 1.0;  // Medium distance
+                maxSpeed = 1.0;  
             } else {
-                maxSpeed = 2.0;  // Far away
+                maxSpeed = 2.0;
             }
             
             vx = Math.max(-maxSpeed, Math.min(maxSpeed, vx));
             vy = Math.max(-maxSpeed, Math.min(maxSpeed, vy));
             
-            // Debug output
-            SmartDashboard.putNumber("Tag/X", tagX);
-            SmartDashboard.putNumber("Tag/Y", tagY);
-            SmartDashboard.putNumber("Tag/Distance", distance);
-            SmartDashboard.putNumber("Cmd/VX", vx);
-            SmartDashboard.putNumber("Cmd/VY", vy);
-            SmartDashboard.putNumber("Cmd/VRot", vRot);
-            
-            // Drive using robot-centric request (same config as FieldCentric)
             this.setControl(robotCentricDrive
                 .withVelocityX(vx)
                 .withVelocityY(vy)
@@ -370,36 +357,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return distSq < distTol * distTol
             && Math.abs(angleToTagRad) < rotTolRad;
     }
-
-
-
-    // public Command pathOnTheFly(Pose2d targetPose, PathConstraints constraints) {
-    //     // Pose2d startPose = getLLPose();
-        
-    //     // if (startPose == null) {
-    //     //     System.err.println("Cannot generate path.");
-    //     //     return new InstantCommand(); 
-    //     // }
-
-    //     // resetPose(startPose); 
-
-    //     List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
-    //         getEstimatedPose(),
-    //         new Pose2d(getEstimatedPose().getX()+2, getEstimatedPose().getY(), getEstimatedPose().getRotation()) 
-    //     );
-
-    //    PathPlannerPath autoAlignPath = new PathPlannerPath(
-    //         waypoints,
-    //         constraints,
-    //         null, 
-    //         new GoalEndState(0.0, getEstimatedPose().getRotation()) 
-    //     );
-
-    //     autoLogPath = autoAlignPath;
-
-    //     PathPlannerLogging.logActivePath(autoAlignPath);        
-    //     return AutoBuilder.followPath(autoAlignPath);
-    // }
 
     /**
      * Returns a command that applies the specified control request to this swerve drivetrain.
