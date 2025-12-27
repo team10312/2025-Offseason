@@ -13,7 +13,13 @@ import com.ctre.phoenix6.signals.StatusLedWhenActiveValue;
 import com.ctre.phoenix6.signals.StripTypeValue;
 import com.ctre.phoenix6.signals.VBatOutputModeValue;
 import com.ctre.phoenix6.configs.CANdleConfiguration;
+import com.ctre.phoenix6.controls.ColorFlowAnimation;
+import com.ctre.phoenix6.controls.EmptyAnimation;
+import com.ctre.phoenix6.controls.FireAnimation;
+import com.ctre.phoenix6.controls.LarsonAnimation;
+import com.ctre.phoenix6.controls.RainbowAnimation;
 import com.ctre.phoenix6.controls.SolidColor;
+import com.ctre.phoenix6.controls.TwinkleAnimation;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -47,6 +53,103 @@ public class Leds extends SubsystemBase {
   public void setColor(int r, int g, int b){
     m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(r, g, b)));
   }
+
+  public void off(){
+    m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(0, 0, 0, 0)));
+  }
+
+  private enum AnimationType {
+    None(false),
+    ColorFlow(true),
+    Fire(false),
+    Larson(true),
+    Rainbow(false),
+    RgbFade(false),
+    SingleFade(true),
+    Strobe(true),
+    Twinkle(true),
+    TwinkleOff(true);
+
+    public final boolean requiresColor;
+
+    AnimationType(boolean requiresColor) {
+        this.requiresColor = requiresColor;
+    }
+}
+
+  private void setAnimationInternal(AnimationType type, RGBWColor color) {
+    m_candle.setControl(new EmptyAnimation(0));
+
+    switch (type) {
+
+        case Fire:
+            m_candle.setControl(
+                new FireAnimation(0, ledCount - 1)
+                    .withSlot(0)
+                    .withCooling(0.4)
+                    .withSparking(0.5)
+            );
+            break;
+
+        case Rainbow:
+            m_candle.setControl(
+                new RainbowAnimation(0, ledCount - 1)
+                    .withSlot(0)
+            );
+            break;
+
+        case Larson:
+            m_candle.setControl(
+                new LarsonAnimation(0, ledCount - 1)
+                    .withSlot(0)
+                    .withColor(color)
+            );
+            break;
+
+        case ColorFlow:
+            m_candle.setControl(
+                new ColorFlowAnimation(0, ledCount - 1)
+                    .withSlot(0)
+                    .withColor(color)
+            );
+            break;
+
+        case Twinkle:
+            m_candle.setControl(
+                new TwinkleAnimation(0, ledCount - 1)
+                    .withSlot(0)
+                    .withColor(color)
+            );
+            break;
+
+        case None:
+            m_candle.setControl(
+                new SolidColor(0, ledCount - 1)
+                    .withColor(new RGBWColor(0, 0, 0))
+            );
+            break;
+
+        default:
+            break;
+    }
+  }
+
+  public void setAnimation(AnimationType type){
+    if (type.requiresColor) {
+      throw new IllegalArgumentException(
+          type + " requires r, g, b"
+      );
+  }
+    setAnimationInternal(type, null);
+  }
+
+  public void setAnimation(AnimationType type, int r, int g, int b){
+    setAnimationInternal(type, new RGBWColor(r, g, b));
+  }
+
+
+
+
 
 
 
