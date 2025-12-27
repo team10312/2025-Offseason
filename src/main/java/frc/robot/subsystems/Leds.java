@@ -84,7 +84,7 @@ public class Leds extends SubsystemBase {
 
         case Fire:
             m_candle.setControl(
-                new FireAnimation(0, ledCount - 1)
+                new FireAnimation(0, ledCount)
                     .withSlot(0)
                     .withCooling(0.4)
                     .withSparking(0.5)
@@ -93,14 +93,14 @@ public class Leds extends SubsystemBase {
 
         case Rainbow:
             m_candle.setControl(
-                new RainbowAnimation(0, ledCount - 1)
+                new RainbowAnimation(0, ledCount)
                     .withSlot(0)
             );
             break;
 
         case Larson:
             m_candle.setControl(
-                new LarsonAnimation(0, ledCount - 1)
+                new LarsonAnimation(0, ledCount)
                     .withSlot(0)
                     .withColor(color)
             );
@@ -108,7 +108,7 @@ public class Leds extends SubsystemBase {
 
         case ColorFlow:
             m_candle.setControl(
-                new ColorFlowAnimation(0, ledCount - 1)
+                new ColorFlowAnimation(0, ledCount)
                     .withSlot(0)
                     .withColor(color)
             );
@@ -116,7 +116,7 @@ public class Leds extends SubsystemBase {
 
         case Twinkle:
             m_candle.setControl(
-                new TwinkleAnimation(0, ledCount - 1)
+                new TwinkleAnimation(0, ledCount)
                     .withSlot(0)
                     .withColor(color)
             );
@@ -124,7 +124,7 @@ public class Leds extends SubsystemBase {
 
         case None:
             m_candle.setControl(
-                new SolidColor(0, ledCount - 1)
+                new SolidColor(0, ledCount)
                     .withColor(new RGBWColor(0, 0, 0))
             );
             break;
@@ -146,13 +146,6 @@ public class Leds extends SubsystemBase {
   public void setAnimation(AnimationType type, int r, int g, int b){
     setAnimationInternal(type, new RGBWColor(r, g, b));
   }
-
-
-
-
-
-
-
   
   @Override
   public void periodic() {
