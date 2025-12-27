@@ -304,13 +304,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             // Calculate distance to tag for speed scaling
             double distance = Math.sqrt(tagX * tagX + tagY * tagY);
             
-            // Proportional control gains
-            double kP_translation = 0.8;
+            // Proportional control gains - TUNE THESE
+            double kP_strafe = 0.8;      // How aggressively to strafe left/right
+            double kP_rotation = 1.5;    // How aggressively to rotate to face tag
             
-            // Constant forward + tag-based left/right
-            double vx = 0.5;  // Constant forward speed
-            double vy = -tagX * kP_translation;  // Left/right uses tag data
-            double vRot = 0;  // No rotation for now
+            // Constant forward + tag-based left/right + rotation to face tag
+            double vx = 0.5;                    // Constant forward speed (m/s)
+            double vy = -tagX * kP_strafe;      // Strafe to center on tag
+            double vRot = tagX * kP_rotation;   // Rotate to face tag (rad/s)
             
             // Speed limiting based on distance - slow down when close
             double maxSpeed;
@@ -331,6 +332,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             SmartDashboard.putNumber("Tag/Distance", distance);
             SmartDashboard.putNumber("Cmd/VX", vx);
             SmartDashboard.putNumber("Cmd/VY", vy);
+            SmartDashboard.putNumber("Cmd/VRot", vRot);
             
             // Drive using robot-centric request (same config as FieldCentric)
             this.setControl(robotCentricDrive
