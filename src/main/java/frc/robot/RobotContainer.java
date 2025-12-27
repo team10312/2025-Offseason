@@ -91,13 +91,11 @@ public class RobotContainer {
         //controls
         
 
-        // operator.circle().onTrue(new SetLed(0, 0, 255));
+        driver.circle().onTrue(new SetLed(0, 0, 255));
         
         // Simple drive to AprilTag - pure proportional control, no PathPlanner
         driver.R1().whileTrue(drivetrain.driveToAprilTag());
-        driver.R1().whileFalse(
-            Commands.runOnce(() -> drivetrain.pathScheduled = false)
-        );
+
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
