@@ -16,6 +16,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -340,6 +341,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 .withVelocityY(vy)
                 .withRotationalRate(vRot));
         })
+        .until(() -> isAtTarget())
         .finallyDo(() -> driveToTagRunning = false);
     }
 
@@ -349,17 +351,24 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public boolean isAtTarget() {
+        // No tag visible → not at target
+        if (!LimelightHelpers.getTV(Constants.limelightName)) return false;
+    
         Pose2d tagRelative = getAprilTagPose();
-        double distance = Math.sqrt(tagRelative.getX() * tagRelative.getX() + 
-                                    tagRelative.getY() * tagRelative.getY());
-        return distance < 1.0;  // Within 1 meter of target
-    }
-
-    public boolean setTolerance(){
-        return 
-        Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX() - LimelightHelpers.getBotPose2d(Constants.limelightName).getX()) < 1
-        && Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY() - LimelightHelpers.getBotPose2d(Constants.limelightName).getY()) < 1
-        && Math.abs(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d().getDegrees() - LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d().getDegrees()) < 2;
+    
+        double x = tagRelative.getX();
+        double y = tagRelative.getY();
+    
+        // Distance check (within 1 meter)
+        double distSq = x * x + y * y;
+        double distTol = 1.0; // meters
+    
+        // Rotation tolerance: ±2 degrees
+        double angleToTagRad = Math.atan2(y, x);
+        double rotTolRad = Units.degreesToRadians(2.0);
+    
+        return distSq < distTol * distTol
+            && Math.abs(angleToTagRad) < rotTolRad;
     }
 
 

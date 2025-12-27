@@ -6,28 +6,18 @@ package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
 
-import java.util.function.BiConsumer;
-
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
-import com.pathplanner.lib.commands.PathfindingCommand;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.commands.SetLed;
-import frc.robot.subsystems.Leds;
 import frc.robot.generated.Constants;
-import frc.robot.generated.LimelightHelpers;
-import com.pathplanner.lib.auto.NamedCommands;
 
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -89,10 +79,7 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
-        
-
-        driver.circle().onTrue(new SetLed(0, 0, 255));
-        
+                
         // Simple drive to AprilTag - pure proportional control, no PathPlanner
         driver.R1().whileTrue(drivetrain.driveToAprilTag());
 
