@@ -11,6 +11,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.internal.DriverStationModeThread;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -23,6 +24,7 @@ import frc.robot.commands.AnimateLed;
 import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
 import frc.robot.commands.StopLed;
+import frc.robot.commands.DriveToAprilTag;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds;
@@ -86,6 +88,8 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
+        driver.R1().whileTrue(new DriveToAprilTag(drivetrain));
+        // LED control is now integrated into DriveToAprilTag command
 
         //Leds
         driver.triangle().onTrue(new SetLedColor(0, 0, 255));

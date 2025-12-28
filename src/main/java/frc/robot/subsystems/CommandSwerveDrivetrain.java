@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import static edu.wpi.first.units.Units.*;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 import com.ctre.phoenix6.SignalLogger;
@@ -15,11 +16,16 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
@@ -31,8 +37,17 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.config.PIDConstants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.controller.PIDController;
+
+import com.pathplanner.lib.path.GoalEndState;
+import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.Waypoint;
+import com.pathplanner.lib.util.PathPlannerLogging;
+import org.littletonrobotics.junction.Logger;
 
 import frc.robot.generated.Constants;
+import frc.robot.generated.LimelightHelpers;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -43,6 +58,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
+
+    private boolean m_isPathFollowing = false;
 
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
     private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
@@ -56,6 +73,54 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
+
+    //Boolean Checks
+    public boolean pathScheduled = false;
+    private boolean driveToTagRunning = false;
+
+    // Simulation test values for AprilTag (can be adjusted via SmartDashboard)
+    private boolean useSimTestValues = false;  // Toggle to use test values even in real mode
+    private double simTagX = 2.0;  // Test tag X position (meters, forward)
+    private double simTagY = 1.0;  // Test tag Y position (meters, left)
+    private double simTagYawRad = Units.degreesToRadians(20.0);
+    private Pose2d simTagPose =
+    new Pose2d(
+        simTagX,
+        simTagY,
+        new Rotation2d(simTagYawRad)
+    );
+    // Fixed simulated AprilTag pose on the field
+
+
+
+    // Getters and setters for DriveToAprilTag command
+    public void setDriveToTagRunning(boolean running) {
+        driveToTagRunning = running;
+    }
+
+    public boolean getUseSimTestValues() {
+        return useSimTestValues;
+    }
+
+    public double getSimTagX() {
+        return simTagX;
+    }
+
+    public double getSimTagY() {
+        return simTagY;
+    }
+
+    public double getSimTagYawRad() {
+        return simTagYawRad;
+    }    
+
+    public Pose2d getSimAprilTagPose() {
+        return simTagPose;
+    }    
+
+    public Pose2d getSimAprilTagRobotPose() {
+        return simTagPose.relativeTo(getEstimatedPose());
+    }    
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -206,9 +271,23 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public Pose2d getEstimatedPose(){
         return this.getState().Pose;
     }
+    
+
+    public Pose2d getLLPose(){
+        return new Pose2d(LimelightHelpers.getBotPose2d(Constants.limelightName).getX(), LimelightHelpers.getBotPose2d(Constants.limelightName).getY(), LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d());
+    }
+
+    public Pose2d getAprilTagPose(){
+        return new Pose2d(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d());
+    }
 
     // Apply the chassis speeds
-    private final SwerveRequest.ApplyRobotSpeeds ppApplySpeeds = new SwerveRequest.ApplyRobotSpeeds();
+    private final SwerveRequest.ApplyRobotSpeeds ppApplySpeeds = new SwerveRequest.ApplyRobotSpeeds()
+        .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
+    
+    // Robot-centric drive request (matches FieldCentric config)
+    private final SwerveRequest.RobotCentric robotCentricDrive = new SwerveRequest.RobotCentric()
+        .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
 
     public void driveRobotRelative(ChassisSpeeds speeds){
         this.setControl(ppApplySpeeds.withSpeeds(speeds));
@@ -237,10 +316,40 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             () -> DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red, // flip paths on red if needed
             this // this subsystem owns the requirement
         );
+
+        // Create a list of waypoints from poses. Each pose represents one waypoint.
+        // The rotation component of the pose should be the direction of travel. Do not use holonomic rotation.
     }
 
     public void stop(){
         this.setControl(ppApplySpeeds.withSpeeds(new ChassisSpeeds(0.0, 0.0, 0.0)));
+    }
+
+
+    public Command pathFindToPose(Pose2d targetPose, PathConstraints constraints){
+        resetPose(getLLPose());
+        return AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
+    }
+
+    public boolean isAtTarget() {
+        // No tag visible → not at target
+        if (!LimelightHelpers.getTV(Constants.limelightName)) return false;
+    
+        Pose2d tagRelative = getAprilTagPose();
+    
+        double x = tagRelative.getX();
+        double y = tagRelative.getY();
+    
+        // Distance check (within 1 meter)
+        double distSq = x * x + y * y;
+        double distTol = 1.0; // meters
+    
+        // Rotation tolerance: ±2 degrees
+        double angleToTagRad = Math.atan2(y, x);
+        double rotTolRad = Units.degreesToRadians(2.0);
+    
+        return distSq < distTol * distTol
+            && Math.abs(angleToTagRad) < rotTolRad;
     }
 
     /**
@@ -276,23 +385,53 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     @Override
-    public void periodic() {
-        /*
-         * Periodically try to apply the operator perspective.
-         * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
-         * This allows us to correct the perspective in case the robot code restarts mid-match.
-         * Otherwise, only check and apply the operator perspective if the DS is disabled.
-         * This ensures driving behavior doesn't change until an explicit disable event occurs during testing.
-         */
-        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
-            DriverStation.getAlliance().ifPresent(allianceColor -> {
-                setOperatorPerspectiveForward(
-                    allianceColor == Alliance.Red ? kRedAlliancePerspectiveRotation : kBlueAlliancePerspectiveRotation
-                );
-                m_hasAppliedOperatorPerspective = true;
-            });
-        }
+public void periodic() {
+    // Apply operator perspective safely
+    if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
+        DriverStation.getAlliance().ifPresent(allianceColor -> {
+            setOperatorPerspectiveForward(
+                allianceColor == Alliance.Red
+                    ? kRedAlliancePerspectiveRotation
+                    : kBlueAlliancePerspectiveRotation
+            );
+            m_hasAppliedOperatorPerspective = true;
+        });
     }
+
+    // ===================== LIMELIGHT POSES =====================
+
+    SmartDashboard.putNumber("LL/RobotX", getLLPose().getX());
+    SmartDashboard.putNumber("LL/RobotY", getLLPose().getY());
+
+    SmartDashboard.putNumber("AprilTag/RelX", getAprilTagPose().getX());
+    SmartDashboard.putNumber("AprilTag/RelY", getAprilTagPose().getY());
+    SmartDashboard.putNumber(
+        "AprilTag/RelYawDeg",
+        getAprilTagPose().getRotation().getDegrees()
+    );
+
+    Logger.recordOutput("Vision/LimelightPose", getLLPose());
+    Logger.recordOutput("Vision/AprilTagPose", getAprilTagPose());
+
+    // ===================== SIM APRILTAG POSE =====================
+    simTagX = SmartDashboard.getNumber("SimTag/X_m", simTagX);
+    simTagY = SmartDashboard.getNumber("SimTag/Y_m", simTagY);
+    simTagYawRad = Units.degreesToRadians(
+        SmartDashboard.getNumber(
+            "SimTag/Yaw_deg",
+            Units.radiansToDegrees(simTagYawRad)
+        )
+    );
+
+    simTagPose = new Pose2d(
+        simTagX,
+        simTagY,
+        new Rotation2d(simTagYawRad)
+    );
+
+    Logger.recordOutput("Sim/AprilTagPose", getSimAprilTagRobotPose());
+}
+
 
     private void startSimThread() {
         m_lastSimTime = Utils.getCurrentTimeSeconds();
