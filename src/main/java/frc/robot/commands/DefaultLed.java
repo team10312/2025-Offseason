@@ -4,10 +4,10 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Leds;
 import frc.robot.subsystems.Leds.AnimationType;
 
-public class StopLed extends Command {
+public class DefaultLed extends Command {
   private final Leds m_leds = Leds.getInstance();
 
-  public StopLed() {
+  public DefaultLed() {
     addRequirements(m_leds);
   }
 
@@ -15,7 +15,7 @@ public class StopLed extends Command {
 
   @Override
   public void initialize() {
-    m_leds.off();
+    m_leds.defaultLeds();
   }
 
   @Override

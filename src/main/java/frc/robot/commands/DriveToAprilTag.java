@@ -151,14 +151,15 @@ public class DriveToAprilTag extends Command {
                 .withVelocityY(0)
                 .withRotationalRate(0)
         );
-
-        // If we ended early (interrupted), mark false. If we ended naturally, leave whatever execute() last set.
-        if (interrupted) {
-            SmartDashboard.putBoolean(kAtTargetKey, false);
-        }
-
-        new StopLed().schedule();
+    if (!interrupted) {
+        new SetLedColor(0, 255, 0).schedule();
+        SmartDashboard.putBoolean(kAtTargetKey, true);
+    } else {
+        new DefaultLed().schedule();
+        SmartDashboard.putBoolean(kAtTargetKey, false);
     }
+}
+
 
     @Override
     public boolean isFinished() {

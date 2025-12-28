@@ -23,7 +23,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.commands.AnimateLed;
 import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
-import frc.robot.commands.StopLed;
+import frc.robot.commands.DefaultLed;
 import frc.robot.commands.DriveToAprilTag;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -94,7 +94,7 @@ public class RobotContainer {
         //Leds
         driver.triangle().onTrue(new SetLedColor(0, 0, 255));
         driver.square().onTrue(new AnimateLed(AnimationType.Rainbow));
-        driver.circle().onTrue(new StopLed());
+        driver.circle().onTrue(new DefaultLed());
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }

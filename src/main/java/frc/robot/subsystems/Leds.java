@@ -213,9 +213,11 @@ public class Leds extends SubsystemBase {
   }
 
   public void off(){
-    m_candle.setControl(new SolidColor(0, ledCount).withColor(new RGBWColor(0, 0, 0, 0)));
-    setAnimation(AnimationType.None);
-    setTrackedSolid(0, 0, 0);
+    setColor(0, 0, 0);
+  }
+
+  public void defaultLeds(){
+    setColor(255, 0, 0);
   }
   
   @Override
