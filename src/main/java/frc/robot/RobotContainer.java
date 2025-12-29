@@ -25,6 +25,8 @@ import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
 import frc.robot.commands.DefaultLed;
 import frc.robot.commands.DriveToAprilTag;
+import frc.robot.commands.PathFindToTag;
+import frc.robot.commands.OnTheFlyToTag;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds;
@@ -93,7 +95,7 @@ public class RobotContainer {
 
         //Leds
         driver.triangle().onTrue(new SetLedColor(0, 0, 255));
-        driver.square().onTrue(new AnimateLed(AnimationType.Rainbow));
+        driver.square().whileTrue(new OnTheFlyToTag(drivetrain));
         driver.circle().onTrue(new DefaultLed());
 
         drivetrain.registerTelemetry(logger::telemeterize);

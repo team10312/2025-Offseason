@@ -36,19 +36,33 @@ public class DriveToAprilTag extends Command {
                 com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage
             );
 
-    // Sim test values
+    // Sim test values (these update each loop to simulate robot movement)
     private boolean useSimTestValues;
     private double simTagX;
     private double simTagY;
+    private double simTagAngle;  // Simulated heading offset
 
-    // Track last computed distance for isFinished()
-    private double lastDistance = Double.POSITIVE_INFINITY;
+    // Track last computed values for isFinished()
+    private double lastTagX = Double.POSITIVE_INFINITY;
+    private double lastTagY = Double.POSITIVE_INFINITY;
+    private double lastAngle = Double.POSITIVE_INFINITY;
+    
+    // Minimum run time to prevent immediate ending
+    private long startTimeMs = 0;
+    private static final long kMinRunTimeMs = 500;  // Must run at least 0.5 seconds
+    
+    // Simulation timing
+    private static final double kSimDt = 0.02;  // 20ms loop time
 
-    // Original proportional gain
+    // Proportional gains
     private static final double kP_translation = 0.8;
+    private static final double kP_rotation = 2.0;  // Rotation gain
+    private static final double kMaxRotRate = 2.0;  // Max rotation speed (rad/s)
 
-    // Finish tolerance (meters)
-    private static final double kFinishDistanceM = 1.0;
+    // Finish tolerances (tighter values to prevent early ending)
+    private static final double kFinishDistanceX = 0.5;    // X distance tolerance (meters) - must be within 0.5m
+    private static final double kFinishDistanceY = 0.05;   // Y offset tolerance (meters) - must be within 5cm
+    private static final double kFinishAngleRad = Math.toRadians(3.0);  // Rotation tolerance - must be within 3 degrees
 
     // Dashboard key
     private static final String kAtTargetKey = "DriveToTag/AtTarget";
@@ -66,8 +80,14 @@ public class DriveToAprilTag extends Command {
         useSimTestValues = drivetrain.getUseSimTestValues();
         simTagX = drivetrain.getSimTagX();
         simTagY = drivetrain.getSimTagY();
+        simTagAngle = 0.0;  // Start with tag directly ahead in robot frame
 
-        lastDistance = Double.POSITIVE_INFINITY;
+        lastTagX = Double.POSITIVE_INFINITY;
+        lastTagY = Double.POSITIVE_INFINITY;
+        lastAngle = Double.POSITIVE_INFINITY;
+        
+        // Record start time
+        startTimeMs = System.currentTimeMillis();
 
         // Start false on init
         SmartDashboard.putBoolean(kAtTargetKey, false);
@@ -80,9 +100,9 @@ public class DriveToAprilTag extends Command {
         boolean inSim = Utils.isSimulation();
 
         if (inSim || useSimTestValues) {
-            // Pull latest values so you can change them live via SmartDashboard in drivetrain.periodic()
-            tagX = drivetrain.getSimTagX();
-            tagY = drivetrain.getSimTagY();
+            // Use the simulated tag position (updated each loop)
+            tagX = simTagX;
+            tagY = simTagY;
         } else {
             if (!LimelightHelpers.getTV(Constants.limelightName)) {
                 drivetrain.setControl(
@@ -91,7 +111,9 @@ public class DriveToAprilTag extends Command {
                         .withVelocityY(0)
                         .withRotationalRate(0)
                 );
-                lastDistance = Double.POSITIVE_INFINITY;
+                lastTagX = Double.POSITIVE_INFINITY;
+                lastTagY = Double.POSITIVE_INFINITY;
+                lastAngle = Double.POSITIVE_INFINITY;
                 SmartDashboard.putBoolean(kAtTargetKey, false);
                 return;
             }
@@ -101,21 +123,55 @@ public class DriveToAprilTag extends Command {
             tagY = tagRelative.getY();
         }
 
-        // Distance to tag (used for speed limiting + isFinished)
+        // Distance to tag (used for speed limiting)
         double distance = Math.sqrt(tagX * tagX + tagY * tagY);
-        lastDistance = distance;
+        
+        // Calculate angle to tag (when 0, tag is directly in front)
+        // Positive angleToTag means tag is to the left, negative means to the right
+        double angleToTag = Math.atan2(tagY, tagX);
+        
+        // Store values for isFinished()
+        lastTagX = tagX;
+        lastTagY = tagY;
+        lastAngle = angleToTag;
 
-        boolean atTarget = distance < kFinishDistanceM;
+        // Check if at target (all three conditions must be met)
+        // X must be positive (tag in front) AND within tolerance
+        boolean xOk = tagX > 0 && tagX < kFinishDistanceX;
+        boolean yOk = Math.abs(tagY) < kFinishDistanceY;
+        boolean angleOk = Math.abs(angleToTag) < kFinishAngleRad;
+        boolean atTarget = xOk && yOk && angleOk;
+        
+        // Debug output for finish conditions
         SmartDashboard.putBoolean(kAtTargetKey, atTarget);
-
-        // ===== ORIGINAL CONTROL =====
-        double vx = 0.5;                    // constant forward speed
-        double vy = -tagX * kP_translation; // original left/right mapping (restored exactly)
-        double vRot = 0.0;                  // no rotation
-
-        // ===== SPEED LIMITING (original) =====
+        SmartDashboard.putBoolean("DriveToTag/X_OK", xOk);
+        SmartDashboard.putBoolean("DriveToTag/Y_OK", yOk);
+        SmartDashboard.putBoolean("DriveToTag/Angle_OK", angleOk);
+        SmartDashboard.putNumber("DriveToTag/LastTagX", tagX);
+        SmartDashboard.putNumber("DriveToTag/LastTagY", tagY);
+        SmartDashboard.putNumber("DriveToTag/LastAngleDeg", Math.toDegrees(angleToTag));
+        
+        // ===== CONTROL =====
+        // Rotation: turn to face the tag
+        // If tag is to the left (angleToTag > 0), rotate left (positive vRot)
+        double vRot = angleToTag * kP_rotation;  // Flipped sign to rotate TOWARD the tag
+        vRot = clamp(vRot, -kMaxRotRate, kMaxRotRate);
+        
+        // Forward speed: reduce when not aligned (creates curved path)
+        // cos(angleToTag) = 1 when aligned, 0 when perpendicular, -1 when facing away
+        double alignmentFactor = Math.max(0, Math.cos(angleToTag));  // 0 to 1
+        double baseSpeed = 0.8;  // Base forward speed
+        double vx = baseSpeed * alignmentFactor;  // Slow down when not facing tag
+        
+        // Strafe: move toward the tag to center on it
+        // Limelight Y axis appears inverted, so negate tagY
+        double vy = -tagY * kP_translation * 0.5;
+        
+        // Speed limiting based on distance
         double maxSpeed;
-        if (distance < 0.5) {
+        if (distance < 0.3) {
+            maxSpeed = 0.3;  // Slow final approach
+        } else if (distance < 0.5) {
             maxSpeed = 0.5;
         } else if (distance < 1.0) {
             maxSpeed = 1.0;
@@ -123,15 +179,17 @@ public class DriveToAprilTag extends Command {
             maxSpeed = 2.0;
         }
 
-        vx = clamp(vx, -maxSpeed, maxSpeed);
+        vx = clamp(vx, 0, maxSpeed);  // Only forward, no backward
         vy = clamp(vy, -maxSpeed, maxSpeed);
 
-        // Debug output (original-style)
+        // Debug output
         SmartDashboard.putNumber("Tag/X", tagX);
         SmartDashboard.putNumber("Tag/Y", tagY);
         SmartDashboard.putNumber("Tag/Distance", distance);
+        SmartDashboard.putNumber("Tag/AngleDeg", Math.toDegrees(angleToTag));
         SmartDashboard.putNumber("Cmd/VX", vx);
         SmartDashboard.putNumber("Cmd/VY", vy);
+        SmartDashboard.putNumber("Cmd/VRot", vRot);
 
         drivetrain.setControl(
             robotCentricDrive
@@ -139,6 +197,22 @@ public class DriveToAprilTag extends Command {
                 .withVelocityY(vy)
                 .withRotationalRate(vRot)
         );
+        
+        // Update simulated tag position based on robot movement (only in sim)
+        if (inSim || useSimTestValues) {
+            // Simple simulation: update tag position based on robot velocity
+            // Robot moving forward decreases tag X (getting closer)
+            simTagX -= vx * kSimDt;
+            // Robot strafing left decreases tag Y (aligning)
+            simTagY -= vy * kSimDt;
+            
+            // Clamp X to prevent going behind robot
+            if (simTagX < 0.1) simTagX = 0.1;
+            
+            // Debug: show simulated values
+            SmartDashboard.putNumber("Sim/TagX", simTagX);
+            SmartDashboard.putNumber("Sim/TagY", simTagY);
+        }
     }
 
     @Override
@@ -163,7 +237,26 @@ public class DriveToAprilTag extends Command {
 
     @Override
     public boolean isFinished() {
-        return lastDistance < kFinishDistanceM;
+        // DISABLED: Command runs until button released
+        // This lets you test the movement without early ending
+        // TODO: Re-enable when movement is correct
+        return false;
+        
+        /*
+        // Don't finish before minimum run time
+        long elapsed = System.currentTimeMillis() - startTimeMs;
+        if (elapsed < kMinRunTimeMs) {
+            return false;
+        }
+        
+        // All three conditions must be met
+        // X must be positive (tag in front) AND within tolerance
+        // Also require X > 0.1 to filter out invalid (0,0) readings
+        boolean xOk = lastTagX > 0.1 && lastTagX < kFinishDistanceX;
+        boolean yOk = Math.abs(lastTagY) < kFinishDistanceY;
+        boolean angleOk = Math.abs(lastAngle) < kFinishAngleRad;
+        return xOk && yOk && angleOk;
+        */
     }
 
     private static double clamp(double v, double lo, double hi) {

@@ -4,72 +4,48 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.commands.PathfindingCommand;
-import com.pathplanner.lib.pathfinding.Pathfinding;
-
-import org.littletonrobotics.junction.LoggedRobot;
-import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.LogFileUtil;
-import org.littletonrobotics.junction.networktables.NT4Publisher;
-import org.littletonrobotics.junction.wpilog.WPILOGReader;
-import org.littletonrobotics.junction.wpilog.WPILOGWriter;
-
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
-public class Robot extends LoggedRobot {
+public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
-  private final RobotContainer m_robotContainer;
-  private final boolean replayMode = false;
+  private RobotContainer m_robotContainer;
 
-  public Robot() {
-    // ---------------- AdvantageKit Logging Configuration ----------------
-    Logger.recordMetadata("ProjectName", "MyProject");
-
-    if (isReal()) {
-      // REAL ROBOT
-      // Logger.addDataReceiver(new WPILOGWriter());   // USB (/U/logs) - DISABLED: No USB drive
-      Logger.addDataReceiver(new NT4Publisher());   // Live NT4
-    } else if (replayMode) {
-      // REPLAY SIMULATION
-      setUseTiming(false);
-      String logPath = LogFileUtil.findReplayLog();
-      Logger.setReplaySource(new WPILOGReader(logPath));
-      Logger.addDataReceiver(
-          new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
-    } else {
-      // LIVE DESKTOP SIMULATION (what you want)
-      Logger.addDataReceiver(new NT4Publisher());
-    }
-
-    Logger.start();
-    // -------------------------------------------------------------------
+  @Override
+  public void robotInit() {
+    // --- WPILib .wpilog logging ---
+    DataLogManager.start();                // Creates .wpilog
+    DataLogManager.logNetworkTables(true); // Logs SmartDashboard/NetworkTables into .wpilog
+    DriverStation.startDataLog(DataLogManager.getLog(), true); // DS + joystick data (recommended)
 
     m_robotContainer = new RobotContainer();
   }
 
-
   @Override
   public void robotPeriodic() {
     CommandScheduler.getInstance().run();
-    SmartDashboard.putData("Command Scheduler", CommandScheduler.getInstance());
   }
 
-  @Override public void disabledInit() {}
-  @Override public void disabledPeriodic() {}
-  @Override public void disabledExit() {}
+  @Override
+  public void disabledInit() {}
+
+  @Override
+  public void disabledPeriodic() {}
 
   @Override
   public void autonomousInit() {
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+
     if (m_autonomousCommand != null) {
       m_autonomousCommand.schedule();
     }
   }
 
-  @Override public void autonomousPeriodic() {}
-  @Override public void autonomousExit() {}
+  @Override
+  public void autonomousPeriodic() {}
 
   @Override
   public void teleopInit() {
@@ -78,19 +54,20 @@ public class Robot extends LoggedRobot {
     }
   }
 
-  @Override public void teleopPeriodic() {}
-  @Override public void teleopExit() {}
+  @Override
+  public void teleopPeriodic() {}
 
   @Override
   public void testInit() {
     CommandScheduler.getInstance().cancelAll();
   }
 
-  @Override public void testPeriodic() {}
-  @Override public void testExit() {}
+  @Override
+  public void testPeriodic() {}
 
   @Override
-  public void simulationPeriodic() {
-    // Physics simulation goes here (swerve, drivetrain, gyro, etc.)
-  }
+  public void simulationInit() {}
+
+  @Override
+  public void simulationPeriodic() {}
 }
