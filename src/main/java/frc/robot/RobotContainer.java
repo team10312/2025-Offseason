@@ -25,7 +25,6 @@ import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
 import frc.robot.commands.DefaultLed;
 import frc.robot.commands.DriveToAprilTag;
-import frc.robot.commands.PathFindToTag;
 import frc.robot.commands.OnTheFlyToTag;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
