@@ -81,7 +81,7 @@ public class OnTheFlyToTag extends Command {
     // ------------------------------------------------------------
     // STEP 0: ROBOT FIELD POSE (USE YOUR DRIVETRAIN FUNCTION)
     // ------------------------------------------------------------
-    Pose2d startPose = drivetrain.getRobotFieldRelativePose();
+    Pose2d startPose = drivetrain.getEstimatedPose();
     SmartDashboard.putNumberArray(
         "OnTheFly/RobotPose",
         new double[] { startPose.getX(), startPose.getY(), startPose.getRotation().getRadians() }
@@ -94,7 +94,7 @@ public class OnTheFlyToTag extends Command {
     if (inSimulation) {
       tagFieldPose = kSimTagFieldPose;
     } else {
-      tagFieldPose = drivetrain.getAprilTagFieldRelativePose();
+      tagFieldPose = drivetrain.getAprilTagPose();
 
       // If tag not valid (your function returns new Pose2d() on failure), bail.
       boolean tagInvalid =

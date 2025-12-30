@@ -454,9 +454,29 @@ public void periodic() {
         }
     );
 
-    
+    SmartDashboard.putNumberArray("Poses/AprilTag Robot Relative", 
+        new double[]{
+            getAprilTagPose().getX(), 
+            getAprilTagPose().getY(), 
+            getAprilTagPose().getRotation().getDegrees()
+        }
+    );
 
+    SmartDashboard.putNumberArray("Poses/Robot Robot Relative", 
+        new double[]{
+            getLLPose().getX(), 
+            getLLPose().getY(), 
+            getLLPose().getRotation().getDegrees()
+        }
+    );
 
+    SmartDashboard.putNumberArray("Poses/Robot Real Relative", 
+    new double[]{
+        getEstimatedPose().getX(), 
+        getEstimatedPose().getY(), 
+        getEstimatedPose().getRotation().getDegrees()
+    }
+    );
 
     simTagX = SmartDashboard.getNumber("SimTag/X_m", simTagX);
     simTagY = SmartDashboard.getNumber("SimTag/Y_m", simTagY);
