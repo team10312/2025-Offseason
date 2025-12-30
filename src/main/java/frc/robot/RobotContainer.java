@@ -27,6 +27,7 @@ import frc.robot.commands.DefaultLed;
 import frc.robot.commands.DriveToAprilTag;
 import frc.robot.commands.PathFindToTag;
 import frc.robot.commands.OnTheFlyToTag;
+import frc.robot.commands.PathPlannerDriveToTag;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds;
@@ -78,6 +79,7 @@ public class RobotContainer {
         driver.circle().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-driver.getLeftY(), -driver.getLeftX()))
         ));
+        
 
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
@@ -91,6 +93,7 @@ public class RobotContainer {
 
         //controls
         driver.R1().whileTrue(new DriveToAprilTag(drivetrain));
+        driver.R2().whileTrue(new PathPlannerDriveToTag(drivetrain));
         // LED control is now integrated into DriveToAprilTag command
 
         //Leds
