@@ -19,13 +19,10 @@ import com.pathplanner.lib.path.Waypoint;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.generated.Constants;
-import frc.robot.generated.LimelightHelpers;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds.AnimationType;
 
@@ -33,17 +30,13 @@ public class OnTheFlyToTag extends Command {
   private final CommandSwerveDrivetrain drivetrain;
 
   private static final PathConstraints kConstraints = new PathConstraints(
-      2.0,                  // max velocity (m/s)
-      3.0,                  // max accel (m/s^2)
-      Math.toRadians(360),  // max angular velocity (rad/s)
-      Math.toRadians(540)   // max angular accel (rad/s^2)
+      2.0,
+      3.0,
+      Math.toRadians(360),
+      Math.toRadians(540)
   );
 
-  private static final double kStandoffDistance = 0.5; // meters
-
-  // SIM: fixed AprilTag pose in field (constant)
-  private static final Pose2d kSimTagFieldPose =
-      new Pose2d(5.0, 3.0, Rotation2d.fromDegrees(60));
+  private static final double kStandoffDistance = 0.5;
 
   private boolean inSimulation = false;
 
@@ -55,13 +48,16 @@ public class OnTheFlyToTag extends Command {
 
   private Command followCmd = null;
   private boolean hadValidPath = false;
-  private boolean turnedGreen = false;
+
+  private final Pose2d kSimTagFieldPose;
 
   private final SwerveRequest.FieldCentric stopRequest =
-      new SwerveRequest.FieldCentric().withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+      new SwerveRequest.FieldCentric()
+          .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
   public OnTheFlyToTag(CommandSwerveDrivetrain drivetrain) {
     this.drivetrain = drivetrain;
+    kSimTagFieldPose = drivetrain.getAprilTagFieldRelativePose();
   }
 
   @Override
@@ -70,9 +66,10 @@ public class OnTheFlyToTag extends Command {
     drivetrain.setDriveToTagRunning(true);
     inSimulation = Utils.isSimulation();
 
-    // Reset Dashboard logs
     SmartDashboard.putNumberArray("OnTheFly/PathPoints", new double[0]);
     SmartDashboard.putNumberArray("OnTheFly/TargetPose", new double[0]);
+    SmartDashboard.putNumberArray("OnTheFly/RobotPose", new double[0]);
+    SmartDashboard.putNumberArray("OnTheFly/TagPose", new double[0]);
 
     generatedPath = null;
     allPathPoints = null;
@@ -80,96 +77,84 @@ public class OnTheFlyToTag extends Command {
     targetRotation = null;
     followCmd = null;
     hadValidPath = false;
-    turnedGreen = false;
 
-    Pose2d startPose = drivetrain.getState().Pose;
+    // ------------------------------------------------------------
+    // STEP 0: ROBOT FIELD POSE (USE YOUR DRIVETRAIN FUNCTION)
+    // ------------------------------------------------------------
+    Pose2d startPose = drivetrain.getRobotFieldRelativePose();
+    SmartDashboard.putNumberArray(
+        "OnTheFly/RobotPose",
+        new double[] { startPose.getX(), startPose.getY(), startPose.getRotation().getRadians() }
+    );
+
+    // ------------------------------------------------------------
+    // STEP 1: TAG FIELD POSE (USE YOUR DRIVETRAIN FUNCTION)
+    // ------------------------------------------------------------
     Pose2d tagFieldPose;
-
-    // -------------------------------------------------------------------------
-    // STEP 1: CALCULATE TAG FIELD POSE
-    // -------------------------------------------------------------------------
     if (inSimulation) {
-      // SIMULATION: Use fixed constant tag
       tagFieldPose = kSimTagFieldPose;
     } else {
-      // REAL ROBOT: Use Limelight
-      if (!LimelightHelpers.getTV(Constants.limelightName)) {
-        System.out.println("OnTheFly: No Tag Visible");
+      tagFieldPose = drivetrain.getAprilTagFieldRelativePose();
+
+      // If tag not valid (your function returns new Pose2d() on failure), bail.
+      boolean tagInvalid =
+          Math.abs(tagFieldPose.getX()) < 1e-6 &&
+          Math.abs(tagFieldPose.getY()) < 1e-6 &&
+          Math.abs(tagFieldPose.getRotation().getRadians()) < 1e-6;
+
+      if (tagInvalid) {
+        System.out.println("OnTheFly: No valid tag field pose (fiducialID <= 0 / no tag).");
         return;
       }
-
-      // 1. Get Robot-Relative Pose from Limelight
-      // (Limelight Robot Space: X=Forward, Y=Right, Z=Up usually)
-      Pose2d tagRelative = drivetrain.getAprilTagPose();
-
-      // 2. COORDINATE CORRECTION (Crucial Step)
-      // WPILib Robot Space: X=Forward, Y=Left
-      // We must invert Y to convert "Right-Positive" to "Left-Positive"
-      Translation2d correctedTranslation = new Translation2d(
-          tagRelative.getX(),
-          -tagRelative.getY() // <--- INVERT Y HERE
-      );
-
-      // 3. Transform StartPose to FieldPose
-      // We assume rotation is 0 for the transform because we only care about position X/Y here
-      Transform2d robotToTag = new Transform2d(correctedTranslation, new Rotation2d());
-      Pose2d rawTagPos = startPose.transformBy(robotToTag);
-
-      // 4. Force Tag Orientation to "Face" the Robot
-      // This ensures we always approach from the front, regardless of how the tag is angled on the wall
-      Translation2d tagToRobot = startPose.getTranslation().minus(rawTagPos.getTranslation());
-      
-      // If we are practically on top of the tag, keep current rotation to avoid spinning
-      Rotation2d tagFacing = (tagToRobot.getNorm() < 0.1) 
-          ? startPose.getRotation().plus(Rotation2d.k180deg) 
-          : tagToRobot.getAngle();
-
-      tagFieldPose = new Pose2d(rawTagPos.getTranslation(), tagFacing);
     }
 
-    // -------------------------------------------------------------------------
-    // STEP 2: CALCULATE TARGET POSE
-    // -------------------------------------------------------------------------
-    // Calculate the vector pointing FROM Tag TO Robot
-    // (We forced tagFieldPose rotation to point at robot in REAL block above,
-    //  and in SIM block the math handles it similarly).
-    Translation2d approachVector = new Translation2d(kStandoffDistance, 0).rotateBy(tagFieldPose.getRotation());
-    
-    // Target is Tag Location + Offset vector
-    Translation2d targetTranslation = tagFieldPose.getTranslation().plus(approachVector);
+    SmartDashboard.putNumberArray(
+        "OnTheFly/TagPose",
+        new double[] { tagFieldPose.getX(), tagFieldPose.getY(), tagFieldPose.getRotation().getRadians() }
+    );
 
-    // Robot should face OPPOSITE to the tag's facing vector (Look At Tag)
-    targetRotation = tagFieldPose.getRotation().plus(Rotation2d.k180deg);
+    Translation2d tagTranslation = tagFieldPose.getTranslation();
+    Rotation2d tagRotation = tagFieldPose.getRotation();
 
+    // ------------------------------------------------------------
+    // STEP 2: TARGET POSE
+    // ------------------------------------------------------------
+    Translation2d approachVector =
+        new Translation2d(kStandoffDistance, 0).rotateBy(tagRotation);
+
+    Translation2d targetTranslation = tagTranslation.plus(approachVector);
+
+    // Robot should face the tag
+    targetRotation = tagRotation.plus(Rotation2d.k180deg);
     targetPose = new Pose2d(targetTranslation, targetRotation);
 
-    // LOGGING
-    SmartDashboard.putNumberArray("OnTheFly/TargetPose", new double[] {
-        targetPose.getX(), targetPose.getY(), targetPose.getRotation().getRadians()
-    });
+    SmartDashboard.putNumberArray(
+        "OnTheFly/TargetPose",
+        new double[] {
+            targetPose.getX(),
+            targetPose.getY(),
+            targetPose.getRotation().getRadians()
+        });
 
-    // -------------------------------------------------------------------------
-    // STEP 3: GENERATE PATH
-    // -------------------------------------------------------------------------
-    double distToTarget = startPose.getTranslation().getDistance(targetPose.getTranslation());
-    
-    // Safety: If we are already at the target (< 10cm), do not move, just finish.
-    if (distToTarget < 0.1) {
-        System.out.println("OnTheFly: Already at target!");
-        turnedGreen = true;
-        new SetLedColor(0, 255, 0).schedule();
-        return; 
-    }
+    // ------------------------------------------------------------
+    // STEP 3: PATH GENERATION
+    // ------------------------------------------------------------
+    Rotation2d travelDir =
+        targetPose.getTranslation()
+            .minus(startPose.getTranslation())
+            .getAngle();
 
-    // Standard travel direction calculation
-    Rotation2d travelDir = targetPose.getTranslation().minus(startPose.getTranslation()).getAngle();
-    Translation2d midpoint = startPose.getTranslation().plus(targetPose.getTranslation()).div(2.0);
+    Translation2d midpoint =
+        startPose.getTranslation()
+            .plus(targetPose.getTranslation())
+            .div(2.0);
 
-    List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
-        new Pose2d(startPose.getTranslation(), travelDir),
-        new Pose2d(midpoint, travelDir),
-        new Pose2d(targetPose.getTranslation(), travelDir)
-    );
+    List<Waypoint> waypoints =
+        PathPlannerPath.waypointsFromPoses(
+            new Pose2d(startPose.getTranslation(), travelDir),
+            new Pose2d(midpoint, travelDir),
+            new Pose2d(targetPose.getTranslation(), travelDir)
+        );
 
     List<RotationTarget> holonomicRotations = List.of(
         new RotationTarget(0.0, startPose.getRotation()),
@@ -187,6 +172,7 @@ public class OnTheFlyToTag extends Command {
         new GoalEndState(0.0, targetRotation),
         false
     );
+
     generatedPath.preventFlipping = true;
 
     allPathPoints = generatedPath.getAllPathPoints();
@@ -203,25 +189,24 @@ public class OnTheFlyToTag extends Command {
 
   @Override
   public void execute() {
-    if (!hadValidPath || followCmd == null) return;
-
-    // Check if path following command has finished
-    if (!turnedGreen && !CommandScheduler.getInstance().isScheduled(followCmd)) {
-      turnedGreen = true;
-      new SetLedColor(0, 255, 0).schedule();
-    }
+    // No early-finish logic for testing
   }
 
   @Override
   public void end(boolean interrupted) {
     drivetrain.setDriveToTagRunning(false);
 
-    if (followCmd != null && CommandScheduler.getInstance().isScheduled(followCmd)) {
+    if (followCmd != null &&
+        CommandScheduler.getInstance().isScheduled(followCmd)) {
       followCmd.cancel();
     }
 
-    // Stop the robot
-    drivetrain.setControl(stopRequest.withVelocityX(0).withVelocityY(0).withRotationalRate(0));
+    drivetrain.setControl(
+        stopRequest
+            .withVelocityX(0)
+            .withVelocityY(0)
+            .withRotationalRate(0)
+    );
 
     if (interrupted) {
       new DefaultLed().schedule();

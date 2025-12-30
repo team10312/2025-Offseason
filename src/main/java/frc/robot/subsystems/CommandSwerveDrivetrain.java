@@ -13,7 +13,10 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
@@ -48,6 +51,11 @@ import org.littletonrobotics.junction.Logger;
 
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
+
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import java.util.Optional;
+
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -89,6 +97,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         simTagY,
         new Rotation2d(simTagYawRad)
     );
+    private static final AprilTagFieldLayout kTagLayout =
+    AprilTagFields.k2025ReefscapeWelded.loadAprilTagLayoutField();
     // Fixed simulated AprilTag pose on the field
 
 
@@ -121,6 +131,39 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public Pose2d getSimAprilTagRobotPose() {
         return simTagPose.relativeTo(getEstimatedPose());
     }    
+
+    public Pose2d getRobotFieldRelativePose() {
+        // 1. Get current alliance (Default to Blue if not connected)
+        boolean isRed = !(DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red);
+    
+        LimelightHelpers.PoseEstimate estimate = isRed 
+            ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-low")
+            : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-low");
+    
+
+        if (estimate == null || estimate.tagCount == 0) {
+            return getEstimatedPose();
+        }
+    
+        return new Pose2d(
+            estimate.pose.getX(), 
+            estimate.pose.getY(), 
+            estimate.pose.getRotation()
+        );
+    }
+
+    public Pose2d getAprilTagFieldRelativePose(){
+        int tagID = (int) LimelightHelpers.getFiducialID("limelight-low");
+
+        if (Utils.isSimulation()){
+            tagID = 7;
+        }
+
+        if (tagID > 0) {
+            return kTagLayout.getTagPose(tagID).orElse(new Pose3d()).toPose2d();        
+        }
+        return new Pose2d();
+    }
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -272,7 +315,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return this.getState().Pose;
     }
     
-
     public Pose2d getLLPose(){
         return new Pose2d(LimelightHelpers.getBotPose2d(Constants.limelightName).getX(), LimelightHelpers.getBotPose2d(Constants.limelightName).getY(), LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d());
     }
@@ -396,20 +438,26 @@ public void periodic() {
 
     // ===================== LIMELIGHT POSES =====================
 
-    SmartDashboard.putNumber("LL/RobotX", getLLPose().getX());
-    SmartDashboard.putNumber("LL/RobotY", getLLPose().getY());
-
-    SmartDashboard.putNumber("AprilTag/RelX", getAprilTagPose().getX());
-    SmartDashboard.putNumber("AprilTag/RelY", getAprilTagPose().getY());
-    SmartDashboard.putNumber(
-        "AprilTag/RelYawDeg",
-        getAprilTagPose().getRotation().getDegrees()
+    // SmartDashboard.putNumber(null, kNumConfigAttempts);
+    SmartDashboard.putNumberArray("Poses/Robot Field Relative", 
+        new double[]{
+            getRobotFieldRelativePose().getX(), 
+            getRobotFieldRelativePose().getY(), 
+            getRobotFieldRelativePose().getRotation().getDegrees()
+        }
+    );
+    SmartDashboard.putNumberArray("Poses/AprilTag Field Relative", 
+        new double[]{
+            getAprilTagFieldRelativePose().getX(), 
+            getAprilTagFieldRelativePose().getY(), 
+            getAprilTagFieldRelativePose().getRotation().getDegrees()
+        }
     );
 
-    Logger.recordOutput("Vision/LimelightPose", getLLPose());
-    Logger.recordOutput("Vision/AprilTagPose", getAprilTagPose());
+    
 
-    // ===================== SIM APRILTAG POSE =====================
+
+
     simTagX = SmartDashboard.getNumber("SimTag/X_m", simTagX);
     simTagY = SmartDashboard.getNumber("SimTag/Y_m", simTagY);
     simTagYawRad = Units.degreesToRadians(

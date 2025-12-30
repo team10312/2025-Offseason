@@ -9,6 +9,7 @@ import com.pathplanner.lib.util.PathPlannerLogging;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -96,8 +97,13 @@ public class PathPlannerDriveToTag extends Command {
             // Calculate target pose in field coordinates
             // Transform robot-relative tag pose to field-relative
             Pose2d targetFieldPose = robotFieldPose.transformBy(
-                new Pose2d(tagX, tagY, tagRelative.getRotation())
-            );
+        new Transform2d(
+            tagX,
+            tagY,
+            tagRelative.getRotation()
+        )
+        );
+
             
             // Face the tag at the end
             Rotation2d targetRotation = Rotation2d.fromRadians(
