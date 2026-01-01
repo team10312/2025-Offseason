@@ -5,6 +5,8 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 
 import frc.robot.generated.Constants;
@@ -34,10 +36,15 @@ public class custom extends Command {
     public void initialize() {
         pathCommand = null;
         finished = false;
+        
+        DriverStation.reportWarning("[custom] initialize() starting", false);
 
         // Check if tag is visible
-        if (!LimelightHelpers.getTV(Constants.limelightName)) {
-            System.out.println("[custom] No tag visible - finishing");
+        boolean tv = LimelightHelpers.getTV(Constants.limelightName);
+        SmartDashboard.putBoolean("custom/tv", tv);
+        
+        if (!tv) {
+            DriverStation.reportWarning("[custom] No tag visible - finishing", false);
             finished = true;
             return;
         }
@@ -46,8 +53,13 @@ public class custom extends Command {
         Pose2d currentPose = drivetrain.getEstimatedPose();
         Pose2d tagPose = drivetrain.getAprilTagPose();
 
-        System.out.println("[custom] currentPose: " + currentPose);
-        System.out.println("[custom] tagPose: " + tagPose);
+        // Log to SmartDashboard (more reliable than console)
+        SmartDashboard.putNumber("custom/currentX", currentPose.getX());
+        SmartDashboard.putNumber("custom/currentY", currentPose.getY());
+        SmartDashboard.putNumber("custom/tagX", tagPose.getX());
+        SmartDashboard.putNumber("custom/tagY", tagPose.getY());
+        
+        DriverStation.reportWarning("[custom] tagPose: X=" + tagPose.getX() + " Y=" + tagPose.getY(), false);
 
         Rotation2d goalRotation = tagPose.getTranslation().getAngle()
             .plus(currentPose.getRotation());
@@ -64,7 +76,13 @@ public class custom extends Command {
             goalRotation
         );
 
-        System.out.println("[custom] finalTargetPose: " + finalTargetPose);
+        // Calculate distance to target
+        double distance = currentPose.getTranslation().getDistance(finalTargetPose.getTranslation());
+        SmartDashboard.putNumber("custom/targetX", finalTargetPose.getX());
+        SmartDashboard.putNumber("custom/targetY", finalTargetPose.getY());
+        SmartDashboard.putNumber("custom/distance", distance);
+        
+        DriverStation.reportWarning("[custom] distance to target: " + distance + "m", false);
 
         // Create and schedule the PathPlanner command
         pathCommand = AutoBuilder.pathfindToPose(
@@ -74,7 +92,7 @@ public class custom extends Command {
         );
 
         pathCommand.schedule();
-        System.out.println("[custom] pathCommand scheduled");
+        DriverStation.reportWarning("[custom] pathCommand scheduled", false);
     }
 
     @Override
@@ -84,7 +102,9 @@ public class custom extends Command {
 
     @Override
     public void end(boolean interrupted) {
-        System.out.println("[custom] end() called, interrupted=" + interrupted);
+        DriverStation.reportWarning("[custom] end() interrupted=" + interrupted + 
+            ", pathCommand=" + (pathCommand != null ? "exists" : "null") +
+            ", wasScheduled=" + (pathCommand != null && pathCommand.isScheduled()), false);
         
         if (pathCommand != null && pathCommand.isScheduled()) {
             pathCommand.cancel();
@@ -96,12 +116,19 @@ public class custom extends Command {
     public boolean isFinished() {
         // Finish if no tag was visible
         if (finished) {
+            DriverStation.reportWarning("[custom] isFinished: no tag", false);
+            return true;
+        }
+        
+        // pathCommand not created yet
+        if (pathCommand == null) {
+            DriverStation.reportWarning("[custom] isFinished: pathCommand is null!", false);
             return true;
         }
         
         // Finish when pathCommand is done
-        if (pathCommand != null && !pathCommand.isScheduled()) {
-            System.out.println("[custom] pathCommand finished");
+        if (!pathCommand.isScheduled()) {
+            DriverStation.reportWarning("[custom] isFinished: pathCommand not scheduled (finished or failed)", false);
             return true;
         }
         
