@@ -96,7 +96,7 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
-        driver.R1().onTrue(custom.create(drivetrain));
+        driver.R1().onTrue(new custom(drivetrain));
         driver.R2().whileTrue(new PathPlannerDriveToTag(drivetrain));
         // LED control is now integrated into DriveToAprilTag command
 
