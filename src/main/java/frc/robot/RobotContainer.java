@@ -59,6 +59,9 @@ public class RobotContainer {
 
 
     public RobotContainer() {
+        // Configure PathPlanner AutoBuilder FIRST (before autoChooser)
+        drivetrain.configurePathPlanner();
+        
         configureBindings();
         autoChooser = AutoBuilder.buildAutoChooser();
         SmartDashboard.putData("Auto Chooser", autoChooser);
@@ -93,7 +96,7 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
-        driver.R1().whileTrue(new custom(drivetrain));
+        driver.R1().onTrue(custom.create(drivetrain));
         driver.R2().whileTrue(new PathPlannerDriveToTag(drivetrain));
         // LED control is now integrated into DriveToAprilTag command
 

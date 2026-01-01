@@ -245,7 +245,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
-        configurePathPlanner();
     }
 
     /**
@@ -269,7 +268,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
-        configurePathPlanner();
     }
 
     /**
@@ -299,7 +297,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
-        configurePathPlanner();
     }
 
     public ChassisSpeeds getRobotRelativeSpeeds() {
@@ -335,7 +332,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         this.setControl(ppApplySpeeds.withSpeeds(speeds));
     }
 
-    private void configurePathPlanner(){
+    public void configurePathPlanner(){
         RobotConfig ppRobotConfig;
         try{
             ppRobotConfig = RobotConfig.fromGUISettings();
