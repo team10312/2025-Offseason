@@ -28,6 +28,7 @@ import frc.robot.commands.DriveToAprilTag;
 import frc.robot.commands.PathFindToTag;
 import frc.robot.commands.OnTheFlyToTag;
 import frc.robot.commands.PathPlannerDriveToTag;
+import frc.robot.commands.custom;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds;
@@ -92,7 +93,7 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
-        driver.R1().whileTrue(new DriveToAprilTag(drivetrain));
+        driver.R1().whileTrue(new custom(drivetrain));
         driver.R2().whileTrue(new PathPlannerDriveToTag(drivetrain));
         // LED control is now integrated into DriveToAprilTag command
 

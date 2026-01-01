@@ -1,11 +1,6 @@
 package frc.robot.commands;
 
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.path.GoalEndState;
-import com.pathplanner.lib.path.PathConstraints;
-import com.pathplanner.lib.path.PathPlannerPath;
-import com.pathplanner.lib.path.Waypoint;
-import com.pathplanner.lib.util.PathPlannerLogging;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -20,21 +15,19 @@ import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds.AnimationType;
 
 /**
- * PathPlannerDriveToTag - Advanced AprilTag alignment using PathPlanner.
+ * PathPlannerDriveToTag - AprilTag alignment using PathPlanner with "Local Virtual Field" approach.
  * 
- * Based on best practices from top FRC teams (254, 401, etc.):
- * - Uses PathPlanner for smooth, obstacle-aware paths
- * - Works in both field-relative (on FRC field) and robot-relative (garage) modes
- * - Handles tag loss gracefully using odometry
- * - Provides smooth motion with proper velocity/acceleration profiles
+ * Key principle: PathPlanner only requires a CONSISTENT coordinate frame, not a real FRC field.
  * 
- * Two modes:
- * 1. Field-relative: On actual FRC field with known AprilTag positions
- *    - Uses pathfindToPose() with field coordinates
- *    - More robust, handles obstacles
- * 2. Robot-relative: In garage/testing with random AprilTag
- *    - Uses waypoint-based path generation
- *    - Works without field layout
+ * How it works:
+ * 1. Origin is established once at first robot enable (0,0,0 = starting position)
+ * 2. Robot pose is tracked via odometry in this virtual field
+ * 3. AprilTag relative pose is converted to virtual-field coordinates
+ * 4. PathPlanner navigates to a goal pose in virtual-field coordinates
+ * 
+ * This approach works identically in:
+ * - Garage/shop testing (with any AprilTag)
+ * - Competition field (same code, same math)
  */
 public class PathPlannerDriveToTag extends Command {
 
@@ -86,85 +79,44 @@ public class PathPlannerDriveToTag extends Command {
             return;
         }
         
-        // Try to get field-relative robot pose
-        Pose2d robotFieldPose = drivetrain.getLLPose();
-        boolean hasFieldPose = isValidFieldPose(robotFieldPose);
+        // Get current robot pose in our virtual field coordinate system
+        // (Origin was established once at first enable)
+        Pose2d robotFieldPose = drivetrain.getEstimatedPose();
         
-        if (hasFieldPose) {
-            // MODE 1: Field-relative pathfinding (on actual FRC field)
-            SmartDashboard.putString("PathPlannerDriveToTag/Mode", "Field-Relative");
-            
-            // Calculate target pose in field coordinates
-            // Transform robot-relative tag pose to field-relative
-            Pose2d targetFieldPose = robotFieldPose.transformBy(
-        new Transform2d(
-            tagX,
-            tagY,
-            tagRelative.getRotation()
-        )
+        SmartDashboard.putString("PathPlannerDriveToTag/Mode", "Virtual-Field");
+        
+        // Convert tag-relative pose to virtual-field pose
+        // This is the key step: robotPose ⊕ tagRelativePose → tagFieldPose
+        Pose2d tagFieldPose = robotFieldPose.transformBy(
+            new Transform2d(tagX, tagY, tagRelative.getRotation())
         );
-
-            
-            // Face the tag at the end
-            Rotation2d targetRotation = Rotation2d.fromRadians(
-                Math.atan2(tagY, tagX)
-            );
-            targetFieldPose = new Pose2d(targetFieldPose.getTranslation(), targetRotation);
-            
-            // Reset odometry to vision pose for accuracy
-            drivetrain.resetOdometry(robotFieldPose);
-            
-            // Use PathPlanner's pathfinding
-            activePathCommand = AutoBuilder.pathfindToPose(
-                targetFieldPose,
-                Constants.constraints,
-                0.0
-            )
-            .until(() -> isAtTarget())
-            .finallyDo(() -> {
-                drivetrain.setDriveToTagRunning(false);
-                SmartDashboard.putBoolean("PathPlannerDriveToTag/Running", false);
-            });
-            
-        } else {
-            // MODE 2: Robot-relative waypoint path (garage/testing)
-            SmartDashboard.putString("PathPlannerDriveToTag/Mode", "Robot-Relative");
-            
-            // Create path from current position (0,0) to tag position in robot space
-            Pose2d startPose = new Pose2d(0, 0, drivetrain.getEstimatedPose().getRotation());
-            
-            // Calculate desired end rotation to face the tag
-            Rotation2d endRotation = Rotation2d.fromRadians(Math.atan2(tagY, tagX));
-            Pose2d endPose = new Pose2d(tagX, tagY, endRotation);
-            
-            // Create waypoints for smooth path
-            java.util.List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
-                startPose,
-                endPose
-            );
-            
-            // Create path with constraints
-            PathPlannerPath path = new PathPlannerPath(
-                waypoints,
-                Constants.constraints,
-                null, // global constraints already in constraints object
-                new GoalEndState(0.0, endRotation) // stop at end, facing tag
-            );
-            
-            // Log path for visualization
-            PathPlannerLogging.logActivePath(path);
-            
-            // Reset odometry to origin for robot-relative path
-            drivetrain.resetOdometry(new Pose2d(0, 0, drivetrain.getEstimatedPose().getRotation()));
-            
-            // Follow the path
-            activePathCommand = AutoBuilder.followPath(path)
-                .until(() -> isAtTarget())
-                .finallyDo(() -> {
-                    drivetrain.setDriveToTagRunning(false);
-                    SmartDashboard.putBoolean("PathPlannerDriveToTag/Running", false);
-                });
-        }
+        
+        // Calculate target pose: offset from tag, facing toward it
+        // Stand 0.5m in front of the tag, facing it
+        double standoffDistance = 0.5;
+        Pose2d targetFieldPose = tagFieldPose.transformBy(
+            new Transform2d(-standoffDistance, 0.0, Rotation2d.k180deg)
+        );
+        
+        SmartDashboard.putNumberArray("PathPlannerDriveToTag/RobotPose", 
+            new double[]{robotFieldPose.getX(), robotFieldPose.getY(), robotFieldPose.getRotation().getDegrees()});
+        SmartDashboard.putNumberArray("PathPlannerDriveToTag/TagFieldPose", 
+            new double[]{tagFieldPose.getX(), tagFieldPose.getY(), tagFieldPose.getRotation().getDegrees()});
+        SmartDashboard.putNumberArray("PathPlannerDriveToTag/TargetPose", 
+            new double[]{targetFieldPose.getX(), targetFieldPose.getY(), targetFieldPose.getRotation().getDegrees()});
+        
+        // Use PathPlanner's pathfinding (works in any consistent coordinate frame)
+        // NO odometry reset here - we use the existing virtual field origin
+        activePathCommand = AutoBuilder.pathfindToPose(
+            targetFieldPose,
+            Constants.constraints,
+            0.0
+        )
+        .until(() -> isAtTarget())
+        .finallyDo(() -> {
+            drivetrain.setDriveToTagRunning(false);
+            SmartDashboard.putBoolean("PathPlannerDriveToTag/Running", false);
+        });
         
         // Schedule the path command
         if (activePathCommand != null) {
@@ -249,22 +201,5 @@ public class PathPlannerDriveToTag extends Command {
         return distanceOk && angleOk;
     }
 
-    /**
-     * Check if a field pose is valid (not just zeros or clearly invalid).
-     * This determines whether we're on an actual FRC field or in garage/testing.
-     */
-    private boolean isValidFieldPose(Pose2d pose) {
-        // Field coordinates should be within reasonable bounds
-        // FRC field is roughly 16.5m x 8m, so valid poses should be in that range
-        double x = pose.getX();
-        double y = pose.getY();
-        
-        // Check if pose is clearly invalid (all zeros or way out of bounds)
-        // Also check if it's a default/invalid pose from Limelight
-        boolean isZero = Math.abs(x) < 0.01 && Math.abs(y) < 0.01;
-        boolean inBounds = x > -2 && x < 18 && y > -2 && y < 10; // Slightly larger than field
-        
-        return !isZero && inBounds;
-    }
 }
 

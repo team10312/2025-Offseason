@@ -19,6 +19,7 @@ import com.pathplanner.lib.path.Waypoint;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -88,24 +89,31 @@ public class OnTheFlyToTag extends Command {
     );
 
     // ------------------------------------------------------------
-    // STEP 1: TAG FIELD POSE (USE YOUR DRIVETRAIN FUNCTION)
+    // STEP 1: CONVERT TAG-RELATIVE TO FIELD POSE
     // ------------------------------------------------------------
     Pose2d tagFieldPose;
     if (inSimulation) {
       tagFieldPose = kSimTagFieldPose;
     } else {
-      tagFieldPose = drivetrain.getAprilTagPose();
+      // Get tag pose relative to robot
+      Pose2d tagRelative = drivetrain.getAprilTagPose();
 
       // If tag not valid (your function returns new Pose2d() on failure), bail.
       boolean tagInvalid =
-          Math.abs(tagFieldPose.getX()) < 1e-6 &&
-          Math.abs(tagFieldPose.getY()) < 1e-6 &&
-          Math.abs(tagFieldPose.getRotation().getRadians()) < 1e-6;
+          Math.abs(tagRelative.getX()) < 1e-6 &&
+          Math.abs(tagRelative.getY()) < 1e-6 &&
+          Math.abs(tagRelative.getRotation().getRadians()) < 1e-6;
 
       if (tagInvalid) {
-        System.out.println("OnTheFly: No valid tag field pose (fiducialID <= 0 / no tag).");
+        System.out.println("OnTheFly: No valid tag pose (fiducialID <= 0 / no tag).");
         return;
       }
+      
+      // Convert tag-relative pose to virtual-field pose
+      // robotPose ⊕ tagRelativePose → tagFieldPose
+      tagFieldPose = startPose.transformBy(
+          new Transform2d(tagRelative.getTranslation(), tagRelative.getRotation())
+      );
     }
 
     SmartDashboard.putNumberArray(
