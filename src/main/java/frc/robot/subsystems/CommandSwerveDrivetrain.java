@@ -11,6 +11,9 @@ import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import edu.wpi.first.apriltag.AprilTag;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -74,53 +77,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
 
+    private final AprilTagFieldLayout layout = AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
+
     //Boolean Checks
-    public boolean pathScheduled = false;
-    private boolean driveToTagRunning = false;
-
-    // Simulation test values for AprilTag (can be adjusted via SmartDashboard)
-    private boolean useSimTestValues = false;  // Toggle to use test values even in real mode
-    private double simTagX = 2.0;  // Test tag X position (meters, forward)
-    private double simTagY = 1.0;  // Test tag Y position (meters, left)
-    private double simTagYawRad = Units.degreesToRadians(20.0);
-    private Pose2d simTagPose =
-    new Pose2d(
-        simTagX,
-        simTagY,
-        new Rotation2d(simTagYawRad)
-    );
-    // Fixed simulated AprilTag pose on the field
-
-
-
-    // Getters and setters for DriveToAprilTag command
-    public void setDriveToTagRunning(boolean running) {
-        driveToTagRunning = running;
-    }
-
-    public boolean getUseSimTestValues() {
-        return useSimTestValues;
-    }
-
-    public double getSimTagX() {
-        return simTagX;
-    }
-
-    public double getSimTagY() {
-        return simTagY;
-    }
-
-    public double getSimTagYawRad() {
-        return simTagYawRad;
-    }    
-
-    public Pose2d getSimAprilTagPose() {
-        return simTagPose;
-    }    
-
-    public Pose2d getSimAprilTagRobotPose() {
-        return simTagPose.relativeTo(getEstimatedPose());
-    }    
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -277,10 +236,38 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return new Pose2d(LimelightHelpers.getBotPose2d(Constants.limelightName).getX(), LimelightHelpers.getBotPose2d(Constants.limelightName).getY(), LimelightHelpers.getBotPose3d(Constants.limelightName).getRotation().toRotation2d());
     }
 
-    public Pose2d getAprilTagPose(){
-        return new Pose2d(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d());
+    public Pose2d getFieldRelativeRobotPose(){
+        return (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red)
+        ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose;
     }
-    
+    // public Pose2d getAprilTagPose(){
+    //     return LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).toPose2d();
+    //     return LimelightHelpers.get
+    //     // return new Pose2d(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d());
+    // }
+
+    public int getTagId(){
+        return (int) LimelightHelpers.getFiducialID(Constants.limelightName);
+    }
+
+    public Pose2d getAprilTagPose() {
+
+        double tagX = layout
+            .getTagPose(getTagId())
+            .map(pose -> pose.getX())
+            .orElse(0.0);
+        double tagY = layout
+            .getTagPose(getTagId())
+            .map(pose -> pose.getY())
+            .orElse(0.0);
+
+        return new Pose2d(
+            Math.abs(getFieldRelativeRobotPose().getX() - tagX),
+            Math.abs(getFieldRelativeRobotPose().getY() - tagY),
+            LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d()
+        );
+    }
     // Apply the chassis speeds
     private final SwerveRequest.ApplyRobotSpeeds ppApplySpeeds = new SwerveRequest.ApplyRobotSpeeds()
         .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
@@ -397,38 +384,28 @@ public void periodic() {
         });
     }
 
-    // ===================== LIMELIGHT POSES =====================
 
-    SmartDashboard.putNumber("LL/RobotX", getLLPose().getX());
-    SmartDashboard.putNumber("LL/RobotY", getLLPose().getY());
-
-    SmartDashboard.putNumber("AprilTag/RelX", getAprilTagPose().getX());
-    SmartDashboard.putNumber("AprilTag/RelY", getAprilTagPose().getY());
-    SmartDashboard.putNumber(
-        "AprilTag/RelYawDeg",
-        getAprilTagPose().getRotation().getDegrees()
+    SmartDashboard.putNumberArray(
+        "April Tag Pose",
+        new double[] {
+            getAprilTagPose().getX(),
+            getAprilTagPose().getY(),
+            getAprilTagPose().getRotation().getRadians()
+        }
     );
-
+    
+    SmartDashboard.putNumberArray(
+        "Robot Pose",
+        new double[] {
+            getEstimatedPose().getX(),
+            getEstimatedPose().getY(),
+            getEstimatedPose().getRotation().getRadians()
+        }
+    );
+    
     Logger.recordOutput("Vision/LimelightPose", getLLPose());
     Logger.recordOutput("Vision/AprilTagPose", getAprilTagPose());
 
-    // ===================== SIM APRILTAG POSE =====================
-    simTagX = SmartDashboard.getNumber("SimTag/X_m", simTagX);
-    simTagY = SmartDashboard.getNumber("SimTag/Y_m", simTagY);
-    simTagYawRad = Units.degreesToRadians(
-        SmartDashboard.getNumber(
-            "SimTag/Yaw_deg",
-            Units.radiansToDegrees(simTagYawRad)
-        )
-    );
-
-    simTagPose = new Pose2d(
-        simTagX,
-        simTagY,
-        new Rotation2d(simTagYawRad)
-    );
-
-    Logger.recordOutput("Sim/AprilTagPose", getSimAprilTagRobotPose());
 }
 
 
