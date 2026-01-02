@@ -1,11 +1,19 @@
 package frc.robot.commands;
 
-import com.ctre.phoenix6.Utils;
-import com.ctre.phoenix6.swerve.SwerveRequest;
+import org.littletonrobotics.junction.Logger;
 
+import com.ctre.phoenix6.Utils;
+import com.pathplanner.lib.auto.AutoBuilder;
+
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -13,139 +21,107 @@ import frc.robot.subsystems.Leds.AnimationType;
 
 public class DriveToAprilTag extends Command {
 
-    private final CommandSwerveDrivetrain drivetrain;
+  private static final AprilTagFieldLayout FIELD =
+      AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
 
-    private final SwerveRequest.RobotCentric robotCentricDrive =
-        new SwerveRequest.RobotCentric()
-            .withDriveRequestType(
-                com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage
-            );
+  private final CommandSwerveDrivetrain drivetrain;
+  private Command followCommand;
 
-    // Simulation support
-    private boolean useSimTestValues;
-    private double simTagX;
-    private double simTagY;
-    private double simTagAngle;
+  private static final Pose2d SIM_TAG_POSE =
+      FIELD.getTagPose(17).orElseThrow().toPose2d();
 
-    private static final double kSimDt = 0.02;
+  public DriveToAprilTag(CommandSwerveDrivetrain drivetrain) {
+    this.drivetrain = drivetrain;
+  }
 
-    // ===== OLD WORKING GAINS =====
-    private static final double kP_translation = 1.5;
-    private static final double kP_rotation = 2.0;
+  @Override
+  public void initialize() {
+    if (followCommand != null && followCommand.isScheduled()) return;
 
-    private static final double kMaxSpeed = 2.0;      // m/s
-    private static final double kMaxRotSpeed = 3.0;   // rad/s
+    new AnimateLed(AnimationType.Rainbow).schedule();
 
-    private static final String kAtTargetKey = "DriveToTag/AtTarget";
+    Pose2d robotPose = drivetrain.getEstimatedPose();
 
-    public DriveToAprilTag(CommandSwerveDrivetrain drivetrain) {
-        this.drivetrain = drivetrain;
-        addRequirements(drivetrain);
+    Pose2d tagOdomPose = null;
+    int tagId = 17;
+
+    if (Utils.isSimulation()) {
+      tagOdomPose = SIM_TAG_POSE;
+    } else {
+      if (!LimelightHelpers.getTV(Constants.limelightName)) return;
+
+      tagId = (int) LimelightHelpers.getFiducialID(Constants.limelightName);
+
+      Pose2d tagRobotRelative = drivetrain.getAprilTagPose();
+      Transform2d robotToTag = new Transform2d(tagRobotRelative.getTranslation(), new Rotation2d());
+      tagOdomPose = robotPose.transformBy(robotToTag);
     }
 
-    @Override
-    public void initialize() {
-        new AnimateLed(AnimationType.Rainbow).schedule();
-        drivetrain.setDriveToTagRunning(true);
+    Pose2d tagLayoutPose = FIELD.getTagPose(tagId).map(p -> p.toPose2d()).orElse(null);
 
-        useSimTestValues = drivetrain.getUseSimTestValues();
-        simTagX = drivetrain.getSimTagX();
-        simTagY = drivetrain.getSimTagY();
-        simTagAngle = 0.0;
+    boolean useLayoutNormal =
+        Utils.isSimulation()
+            || (tagLayoutPose != null
+                && tagOdomPose != null
+                && tagOdomPose.getTranslation().getDistance(tagLayoutPose.getTranslation()) < 2.0);
 
-        SmartDashboard.putBoolean(kAtTargetKey, false);
+    Translation2d targetTranslation;
+    Rotation2d targetRotation;
+
+    if (useLayoutNormal && tagLayoutPose != null) {
+      Rotation2d tagRotation = tagLayoutPose.getRotation();
+      Translation2d outward = new Translation2d(1.0, 0.0).rotateBy(tagRotation);
+
+      Translation2d tagTranslation = Utils.isSimulation()
+          ? tagLayoutPose.getTranslation()
+          : tagOdomPose.getTranslation();
+
+      targetTranslation = tagTranslation.plus(outward.times(Constants.aprilTagTolerance));
+      targetRotation = tagRotation.plus(Rotation2d.fromDegrees(180.0));
+    } else {
+      Translation2d tagToRobot = robotPose.getTranslation().minus(tagOdomPose.getTranslation());
+      double dist = tagToRobot.getNorm();
+
+      Translation2d standoffDir =
+          dist > 1e-9 ? tagToRobot.div(dist)
+                      : new Translation2d(1.0, 0.0).rotateBy(robotPose.getRotation());
+
+      targetTranslation = tagOdomPose.getTranslation().plus(standoffDir.times(Constants.aprilTagTolerance));
+      targetRotation = tagOdomPose.getTranslation().minus(targetTranslation).getAngle();
     }
 
-    @Override
-    public void execute() {
-        double tagX, tagY, tagAngle;
+    Pose2d targetPose = new Pose2d(targetTranslation, targetRotation);
 
-        boolean inSim = Utils.isSimulation();
+    Logger.recordOutput("DriveToTag/UsingLayoutNormal", useLayoutNormal);
+    Logger.recordOutput("DriveToTag/TagPose", tagOdomPose);
+    Logger.recordOutput("DriveToTag/TargetPose", targetPose);
 
-        if (inSim || useSimTestValues) {
-            tagX = simTagX;
-            tagY = simTagY;
-            tagAngle = simTagAngle;
-        } else {
-            if (!LimelightHelpers.getTV(Constants.limelightName)) {
-                drivetrain.setControl(
-                    robotCentricDrive
-                        .withVelocityX(0)
-                        .withVelocityY(0)
-                        .withRotationalRate(0)
-                );
-                SmartDashboard.putBoolean(kAtTargetKey, false);
-                return;
-            }
+    SmartDashboard.putNumberArray(
+        "DriveToTag/TargetPose",
+        new double[] { targetPose.getX(), targetPose.getY(), targetPose.getRotation().getRadians() }
+    );
 
-            Pose2d tagRelative = drivetrain.getAprilTagPose();
-            tagX = tagRelative.getX();
-            tagY = tagRelative.getY();
-            tagAngle = tagRelative.getRotation().getRadians();
-        }
+    followCommand = AutoBuilder.pathfindToPose(targetPose, Constants.constraints, 0.0);
+    followCommand.schedule();
+  }
 
-        double vx = tagX * kP_translation;
-        double vy = tagY * kP_translation;
-        double vRot = 0.0;
-
-        vx = clamp(vx, -kMaxSpeed, kMaxSpeed);
-        vy = clamp(vy, -kMaxSpeed, kMaxSpeed);
-        // vRot = clamp(vRot, -kMaxRotSpeed, kMaxRotSpeed);
-
-        // Debug
-        SmartDashboard.putNumber("Tag/X", tagX);
-        SmartDashboard.putNumber("Tag/Y", tagY);
-        SmartDashboard.putNumber("Tag/AngleDeg", Math.toDegrees(tagAngle));
-        SmartDashboard.putNumber("Cmd/VX", vx);
-        SmartDashboard.putNumber("Cmd/VY", vy);
-        SmartDashboard.putNumber("Cmd/VRot", vRot);
-
-        drivetrain.setControl(
-            robotCentricDrive
-                .withVelocityX(vx)
-                .withVelocityY(vy)
-                .withRotationalRate(vRot)
-        );
-
-        // ===== SIM UPDATE =====
-        if (inSim || useSimTestValues) {
-            simTagX -= vx * kSimDt;
-            simTagY -= vy * kSimDt;
-            simTagAngle -= vRot * kSimDt;
-
-            if (simTagX < 0.1) simTagX = 0.1;
-
-            SmartDashboard.putNumber("Sim/TagX", simTagX);
-            SmartDashboard.putNumber("Sim/TagY", simTagY);
-        }
+  @Override
+  public void end(boolean interrupted) {
+    if (followCommand != null) {
+      followCommand.cancel();
     }
 
-    @Override
-    public void end(boolean interrupted) {
-        drivetrain.setDriveToTagRunning(false);
+    drivetrain.stop();
 
-        drivetrain.setControl(
-            robotCentricDrive
-                .withVelocityX(0)
-                .withVelocityY(0)
-                .withRotationalRate(0)
-        );
-
-        if (!interrupted) {
-            new SetLedColor(0, 255, 0).schedule();
-            SmartDashboard.putBoolean(kAtTargetKey, true);
-        } else {
-            new DefaultLed().schedule();
-            SmartDashboard.putBoolean(kAtTargetKey, false);
-        }
+    if (interrupted) {
+      new DefaultLed().schedule();
+    } else {
+      new SetLedColor(0, 255, 0).schedule();
     }
+  }
 
-    @Override
-    public boolean isFinished() {
-        return false; // button-held behavior preserved
-    }
-
-    private static double clamp(double v, double lo, double hi) {
-        return Math.max(lo, Math.min(hi, v));
-    }
+  @Override
+  public boolean isFinished() {
+    return false;
+  }
 }

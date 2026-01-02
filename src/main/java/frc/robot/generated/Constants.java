@@ -17,7 +17,6 @@ public class Constants {
 
     //Pathfinding
     public static String limelightName = "limelight-low";
-    public static Pose2d targetPose = LimelightHelpers.getTargetPose3d_CameraSpace(Constants.limelightName).toPose2d(); // Robot Pose 2D
-    public static final PathConstraints constraints = new PathConstraints(0.5, 0.5,Units.degreesToRadians(540), Units.degreesToRadians(720));
-    public static Pose2d robotPose = LimelightHelpers.getBotPose2d(Constants.limelightName);
+    public static final PathConstraints constraints = new PathConstraints(2, 3,Units.degreesToRadians(540), Units.degreesToRadians(720));
+    public static final double aprilTagTolerance = 0.7;
 }

@@ -20,13 +20,11 @@ import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.commands.AlignRotationToTag;
 import frc.robot.commands.AnimateLed;
 import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
 import frc.robot.commands.DefaultLed;
 import frc.robot.commands.DriveToAprilTag;
-import frc.robot.commands.OnTheFlyToTag;
 import frc.robot.generated.Constants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -92,11 +90,7 @@ public class RobotContainer {
 
         //controls
         driver.R1().whileTrue(new DriveToAprilTag(drivetrain));
-        // LED control is now integrated into DriveToAprilTag command
 
-        //Leds
-        driver.triangle().onTrue(new AlignRotationToTag(drivetrain, Constants.limelightName));
-        driver.square().whileTrue(new OnTheFlyToTag(drivetrain));
         driver.circle().onTrue(new DefaultLed());
 
         drivetrain.registerTelemetry(logger::telemeterize);

@@ -322,10 +322,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public void stop(){
-        this.setControl(ppApplySpeeds.withSpeeds(new ChassisSpeeds(0.0, 0.0, 0.0)));
+        this.setControl(
+            new SwerveRequest.FieldCentric()
+                .withVelocityX(0.0)
+                .withVelocityY(-0.0)
+                .withRotationalRate(0.0)
+        );
     }
-
-
 
     public boolean isAtTarget() {
         // No tag visible → not at target
