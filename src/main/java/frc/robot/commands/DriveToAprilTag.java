@@ -34,7 +34,6 @@ public class DriveToAprilTag extends Command {
 
   public DriveToAprilTag(CommandSwerveDrivetrain drivetrain) {
     this.drivetrain = drivetrain;
-    addRequirements(drivetrain);
   }
 
   @Override
@@ -44,88 +43,97 @@ public class DriveToAprilTag extends Command {
     new AnimateLed(AnimationType.Rainbow).schedule();
 
     Pose2d robotPose = drivetrain.getEstimatedPose();
-    Pose2d tagPose;
+
+    Pose2d tagOdomPose;
+    int tagId = 17;
 
     if (Utils.isSimulation()) {
-      tagPose = SIM_TAG_POSE;
+      tagOdomPose = SIM_TAG_POSE;
     } else {
       if (!LimelightHelpers.getTV(Constants.limelightName)) return;
-      tagPose = drivetrain.getAprilTagPose();
+
+      tagId = (int) LimelightHelpers.getFiducialID(Constants.limelightName);
+
+      Pose2d tagRobotRelative = drivetrain.getAprilTagPose();
+      Transform2d robotToTag =
+          new Transform2d(tagRobotRelative.getTranslation(), new Rotation2d());
+      tagOdomPose = robotPose.transformBy(robotToTag);
     }
 
-    Logger.recordOutput("DriveToTag/TagPose", tagPose);
+    Pose2d tagLayoutPose =
+        FIELD.getTagPose(tagId).map(p -> p.toPose2d()).orElse(null);
+
+    boolean useLayoutNormal =
+        Utils.isSimulation()
+            || (tagLayoutPose != null
+                && tagOdomPose.getTranslation()
+                    .getDistance(tagLayoutPose.getTranslation()) < 2.0);
+
+    Translation2d targetTranslation;
+    Rotation2d targetRotation;
+
+    if (useLayoutNormal && tagLayoutPose != null) {
+      Translation2d outward =
+          new Translation2d(1.0, 0.0).rotateBy(tagLayoutPose.getRotation());
+
+      Translation2d baseTranslation =
+          Utils.isSimulation()
+              ? tagLayoutPose.getTranslation()
+              : tagOdomPose.getTranslation();
+
+      targetTranslation =
+          baseTranslation.plus(outward.times(Constants.aprilTagTolerance));
+
+      targetRotation = tagLayoutPose.getRotation().plus(Rotation2d.k180deg);
+    } else {
+      Translation2d tagToRobot =
+          robotPose.getTranslation().minus(tagOdomPose.getTranslation());
+
+      double dist = tagToRobot.getNorm();
+
+      Translation2d standoffDir =
+          dist > 1e-9
+              ? tagToRobot.div(dist)
+              : new Translation2d(1.0, 0.0).rotateBy(robotPose.getRotation());
+
+      targetTranslation =
+          tagOdomPose.getTranslation()
+              .plus(standoffDir.times(Constants.aprilTagTolerance));
+
+      targetRotation =
+          tagOdomPose.getTranslation().minus(targetTranslation).getAngle();
+    }
+
+    Pose2d targetPose = new Pose2d(targetTranslation, targetRotation);
+
+    Logger.recordOutput("DriveToTag/UsingLayoutNormal", useLayoutNormal);
+    Logger.recordOutput("DriveToTag/TagPose", tagOdomPose);
+    Logger.recordOutput("DriveToTag/TargetPose", targetPose);
+
     SmartDashboard.putNumberArray(
-        "DriveToTag/TagPose",
+        "DriveToTag/TargetPose",
         new double[] {
-            tagPose.getX(),
-            tagPose.getY(),
-            tagPose.getRotation().getRadians()
+            targetPose.getX(),
+            targetPose.getY(),
+            targetPose.getRotation().getRadians()
         }
     );
-
-    Pose2d targetPose;
-
-    if (Utils.isSimulation()) {
-      targetPose = tagPose;
-    } else {
-      Pose2d tagOdomPose =
-          robotPose.transformBy(
-              new Transform2d(tagPose.getTranslation(), new Rotation2d()));
-
-      Pose2d tagLayoutPose =
-          FIELD.getTagPose(17).map(p -> p.toPose2d()).orElse(null);
-
-      boolean useLayoutNormal =
-          tagLayoutPose != null
-              && tagOdomPose.getTranslation()
-                  .getDistance(tagLayoutPose.getTranslation()) < 2.0;
-
-      Translation2d targetTranslation;
-
-      if (useLayoutNormal) {
-        Translation2d outward =
-            new Translation2d(1.0, 0.0).rotateBy(tagLayoutPose.getRotation());
-
-        targetTranslation =
-            tagOdomPose.getTranslation()
-                .plus(outward.times(Constants.aprilTagTolerance));
-      } else {
-        Translation2d tagToRobot =
-            robotPose.getTranslation().minus(tagOdomPose.getTranslation());
-
-        Translation2d dir =
-            tagToRobot.getNorm() > 1e-9
-                ? tagToRobot.div(tagToRobot.getNorm())
-                : new Translation2d(1.0, 0.0).rotateBy(robotPose.getRotation());
-
-        targetTranslation =
-            tagOdomPose.getTranslation()
-                .plus(dir.times(Constants.aprilTagTolerance));
-      }
-
-      targetPose = new Pose2d(targetTranslation, robotPose.getRotation());
-    }
 
     List<Waypoint> waypoints =
         PathPlannerPath.waypointsFromPoses(
             new Pose2d(
                 robotPose.getTranslation(),
-                targetPose.getTranslation()
-                    .minus(robotPose.getTranslation())
-                    .getAngle()),
+                targetTranslation.minus(robotPose.getTranslation()).getAngle()),
             new Pose2d(
-                targetPose.getTranslation(),
-                targetPose.getTranslation()
-                    .minus(robotPose.getTranslation())
-                    .getAngle()));
+                targetTranslation,
+                targetTranslation.minus(robotPose.getTranslation()).getAngle()));
 
     PathPlannerPath path =
         new PathPlannerPath(
             waypoints,
             Constants.constraints,
             null,
-            new GoalEndState(
-                0.0, targetPose.getRotation().plus(Rotation2d.k180deg)));
+            new GoalEndState(0.0, targetRotation));
 
     path.preventFlipping = true;
 

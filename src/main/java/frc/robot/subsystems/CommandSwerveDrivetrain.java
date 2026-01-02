@@ -51,6 +51,7 @@ import org.littletonrobotics.junction.Logger;
 
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
+import frc.robot.generated.LimelightHelpers.PoseEstimate;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -237,9 +238,15 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public Pose2d getFieldRelativeRobotPose(){
-        return (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red)
-        ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose
-        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose;
+        Pose2d poseEstimate = getEstimatedPose();
+
+        if (LimelightHelpers.getTV(Constants.limelightName) != false && LimelightHelpers.getBotPose2d(Constants.limelightName) != null){
+            poseEstimate = (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red)
+                ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose
+                : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose;
+        }
+
+        return poseEstimate;
     }
     // public Pose2d getAprilTagPose(){
     //     return LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).toPose2d();
