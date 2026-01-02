@@ -271,7 +271,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         return new Pose2d(
             Math.abs(getFieldRelativeRobotPose().getX() - tagX),
-            Math.abs(getFieldRelativeRobotPose().getY() - tagY),
+            getFieldRelativeRobotPose().getY() - tagY,
             LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d()
         );
     }

@@ -7,6 +7,7 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.path.Waypoint;
+import com.pathplanner.lib.util.PathPlannerLogging;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -41,7 +42,8 @@ public class DriveToAprilTag extends Command {
     if (followCommand != null && followCommand.isScheduled()) return;
 
     new AnimateLed(AnimationType.Rainbow).schedule();
-
+    
+    drivetrain.resetPose(new Pose2d());
     Pose2d robotPose = drivetrain.getEstimatedPose();
 
     Pose2d tagOdomPose;
@@ -136,6 +138,8 @@ public class DriveToAprilTag extends Command {
             new GoalEndState(0.0, targetRotation));
 
     path.preventFlipping = true;
+    PathPlannerLogging.logActivePath(path);
+    PathPlannerLogging.logTargetPose(targetPose);
 
     followCommand = AutoBuilder.followPath(path);
     followCommand.schedule();
