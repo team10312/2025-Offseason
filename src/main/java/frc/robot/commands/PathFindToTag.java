@@ -40,6 +40,7 @@ public class PathFindToTag extends Command {
 
     new AnimateLed(AnimationType.Rainbow).schedule();
 
+    drivetrain.resetPose(drivetrain.getFieldRelativeRobotPose());
     Pose2d robotPose = drivetrain.getEstimatedPose();
 
     Pose2d tagOdomPose = null;
@@ -52,7 +53,7 @@ public class PathFindToTag extends Command {
 
       tagId = (int) LimelightHelpers.getFiducialID(Constants.limelightName);
 
-      Pose2d tagRobotRelative = drivetrain.getAprilTagPose();
+      Pose2d tagRobotRelative = drivetrain.getAprilTagFieldRelativePose();
       Transform2d robotToTag = new Transform2d(tagRobotRelative.getTranslation(), new Rotation2d());
       tagOdomPose = robotPose.transformBy(robotToTag);
     }

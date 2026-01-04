@@ -2,6 +2,8 @@ package frc.robot.subsystems;
 
 import static edu.wpi.first.units.Units.*;
 
+import java.lang.invoke.ConstantCallSite;
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -253,6 +255,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     //     return LimelightHelpers.get
     //     // return new Pose2d(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d());
     // }
+
+    public Pose2d getAprilTagFieldRelativePose(){
+        return layout.getTagPose((int) LimelightHelpers.getFiducialID(Constants.limelightName)).get().toPose2d(); 
+    }
 
     public int getTagId(){
         return (int) LimelightHelpers.getFiducialID(Constants.limelightName);

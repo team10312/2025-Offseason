@@ -25,6 +25,7 @@ import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
 import frc.robot.commands.DefaultLed;
 import frc.robot.commands.DriveToAprilTag;
+import frc.robot.commands.PathFindToTag;
 import frc.robot.generated.Constants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -90,6 +91,7 @@ public class RobotContainer {
 
         //controls
         driver.R1().whileTrue(new DriveToAprilTag(drivetrain));
+        driver.R2().whileTrue(new PathFindToTag(drivetrain));
 
         driver.circle().onTrue(new DefaultLed());
 
