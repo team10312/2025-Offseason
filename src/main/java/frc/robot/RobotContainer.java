@@ -24,8 +24,8 @@ import frc.robot.commands.AnimateLed;
 import frc.robot.subsystems.Leds.AnimationType;
 import frc.robot.commands.SetLedColor;
 import frc.robot.commands.DefaultLed;
-import frc.robot.commands.DriveToAprilTag;
 import frc.robot.commands.PathFindToTag;
+import frc.robot.commands.OnTheFly;
 import frc.robot.generated.Constants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
@@ -90,7 +90,7 @@ public class RobotContainer {
         driver.L1().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         //controls
-        driver.R1().whileTrue(new DriveToAprilTag(drivetrain));
+        driver.R1().whileTrue(new OnTheFly(drivetrain));
         driver.R2().whileTrue(new PathFindToTag(drivetrain));
 
         driver.circle().onTrue(new DefaultLed());

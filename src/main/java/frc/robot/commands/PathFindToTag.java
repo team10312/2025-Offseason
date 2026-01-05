@@ -4,28 +4,31 @@ import org.littletonrobotics.junction.Logger;
 
 import com.ctre.phoenix6.Utils;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.path.GoalEndState;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.Waypoint;
+import com.pathplanner.lib.util.PathPlannerLogging;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Leds.AnimationType;
 
-public class PathFindToTag extends Command {
+import java.util.List;
 
-  private static final AprilTagFieldLayout FIELD =
-      AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
+public class PathFindToTag extends Command {
 
   private final CommandSwerveDrivetrain drivetrain;
   private Command followCommand;
+
+  private static final AprilTagFieldLayout FIELD =
+      AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
 
   private static final Pose2d SIM_TAG_POSE =
       FIELD.getTagPose(17).orElseThrow().toPose2d();
@@ -39,70 +42,46 @@ public class PathFindToTag extends Command {
     if (followCommand != null && followCommand.isScheduled()) return;
 
     new AnimateLed(AnimationType.Rainbow).schedule();
-
-    drivetrain.resetPose(drivetrain.getFieldRelativeRobotPose());
+    
+    // drivetrain.resetPose(new Pose2d());
     Pose2d robotPose = drivetrain.getEstimatedPose();
 
-    Pose2d tagOdomPose = null;
-    int tagId = 17;
+    Pose2d targetPose = new Pose2d();
 
     if (Utils.isSimulation()) {
-      tagOdomPose = SIM_TAG_POSE;
-    } else {
-      if (!LimelightHelpers.getTV(Constants.limelightName)) return;
-
-      tagId = (int) LimelightHelpers.getFiducialID(Constants.limelightName);
-
-      Pose2d tagRobotRelative = drivetrain.getAprilTagFieldRelativePose();
-      Transform2d robotToTag = new Transform2d(tagRobotRelative.getTranslation(), new Rotation2d());
-      tagOdomPose = robotPose.transformBy(robotToTag);
+      targetPose = SIM_TAG_POSE;
+    }
+    else if (!LimelightHelpers.getTV(Constants.limelightName)){
+      targetPose = drivetrain.getAprilTagPose();
+    }
+    else{
+      new InstantCommand();
     }
 
-    Pose2d tagLayoutPose = FIELD.getTagPose(tagId).map(p -> p.toPose2d()).orElse(null);
+    Translation2d outward =
+      new Translation2d(1.0, 0.0).rotateBy(targetPose.getRotation());
 
-    boolean useLayoutNormal =
-        Utils.isSimulation()
-            || (tagLayoutPose != null
-                && tagOdomPose != null
-                && tagOdomPose.getTranslation().getDistance(tagLayoutPose.getTranslation()) < 2.0);
+    Translation2d targetTranslation =
+        targetPose.getTranslation().plus(outward.times(Constants.aprilTagTolerance));
 
-    Translation2d targetTranslation;
-    Rotation2d targetRotation;
+    Rotation2d targetRotation = targetPose.getRotation().plus(Rotation2d.k180deg);
 
-    if (useLayoutNormal && tagLayoutPose != null) {
-      Rotation2d tagRotation = tagLayoutPose.getRotation();
-      Translation2d outward = new Translation2d(1.0, 0.0).rotateBy(tagRotation);
+    targetPose = new Pose2d(targetTranslation, targetRotation);
 
-      Translation2d tagTranslation = Utils.isSimulation()
-          ? tagLayoutPose.getTranslation()
-          : tagOdomPose.getTranslation();
-
-      targetTranslation = tagTranslation.plus(outward.times(Constants.aprilTagTolerance));
-      targetRotation = tagRotation.plus(Rotation2d.fromDegrees(180.0));
-    } else {
-      Translation2d tagToRobot = robotPose.getTranslation().minus(tagOdomPose.getTranslation());
-      double dist = tagToRobot.getNorm();
-
-      Translation2d standoffDir =
-          dist > 1e-9 ? tagToRobot.div(dist)
-                      : new Translation2d(1.0, 0.0).rotateBy(robotPose.getRotation());
-
-      targetTranslation = tagOdomPose.getTranslation().plus(standoffDir.times(Constants.aprilTagTolerance));
-      targetRotation = tagOdomPose.getTranslation().minus(targetTranslation).getAngle();
-    }
-
-    Pose2d targetPose = new Pose2d(targetTranslation, targetRotation);
-
-    Logger.recordOutput("DriveToTag/UsingLayoutNormal", useLayoutNormal);
-    Logger.recordOutput("DriveToTag/TagPose", tagOdomPose);
     Logger.recordOutput("DriveToTag/TargetPose", targetPose);
 
     SmartDashboard.putNumberArray(
         "DriveToTag/TargetPose",
-        new double[] { targetPose.getX(), targetPose.getY(), targetPose.getRotation().getRadians() }
+        new double[] {
+            targetPose.getX(),
+            targetPose.getY(),
+            targetPose.getRotation().getRadians()
+        }
     );
 
-    followCommand = AutoBuilder.pathfindToPose(targetPose, Constants.constraints, 0.0);
+    PathPlannerLogging.logTargetPose(targetPose);
+
+    followCommand = AutoBuilder.pathfindToPose(targetPose, Constants.constraints);
     followCommand.schedule();
   }
 
@@ -110,6 +89,7 @@ public class PathFindToTag extends Command {
   public void end(boolean interrupted) {
     if (followCommand != null) {
       followCommand.cancel();
+      followCommand = null;
     }
 
     drivetrain.stop();

@@ -22,7 +22,7 @@ import frc.robot.subsystems.Leds.AnimationType;
 
 import java.util.List;
 
-public class OnTheFly2 extends Command {
+public class OnTheFly extends Command {
 
   private final CommandSwerveDrivetrain drivetrain;
   private Command followCommand;
@@ -33,7 +33,7 @@ public class OnTheFly2 extends Command {
   private static final Pose2d SIM_TAG_POSE =
       FIELD.getTagPose(17).orElseThrow().toPose2d();
 
-  public OnTheFly2(CommandSwerveDrivetrain drivetrain) {
+  public OnTheFly(CommandSwerveDrivetrain drivetrain) {
     this.drivetrain = drivetrain;
   }
 
@@ -43,7 +43,7 @@ public class OnTheFly2 extends Command {
 
     new AnimateLed(AnimationType.Rainbow).schedule();
     
-    drivetrain.resetPose(new Pose2d());
+    // drivetrain.resetPose(new Pose2d());
     Pose2d robotPose = drivetrain.getEstimatedPose();
 
     Pose2d targetPose = new Pose2d();
