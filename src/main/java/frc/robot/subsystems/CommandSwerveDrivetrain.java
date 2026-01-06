@@ -236,9 +236,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         if (LimelightHelpers.getTV(Constants.limelightName) != false && LimelightHelpers.getBotPose2d(Constants.limelightName) != null){
             poseEstimate = (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red)
-                ? new Pose2d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose.getTranslation(), getEstimatedPose().getRotation())
-
-                : new Pose2d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose.getTranslation(), getEstimatedPose().getRotation());
+                ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose
+                // ? new Pose2d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose.getTranslation(), getEstimatedPose().getRotation())
+                // : new Pose2d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose.getTranslation(), getEstimatedPose().getRotation());
+                : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose;
         }
 
         return poseEstimate;
@@ -380,6 +381,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     @Override
 public void periodic() {
+    // Provide current field-relative yaw to Limelight for MegaTag2 pose calculation
+    LimelightHelpers.SetRobotOrientation(
+        Constants.limelightName,
+        getEstimatedPose().getRotation().getDegrees(),
+        0, 0, 0, 0, 0
+    );
+
     // Apply operator perspective safely
     if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
         DriverStation.getAlliance().ifPresent(allianceColor -> {
