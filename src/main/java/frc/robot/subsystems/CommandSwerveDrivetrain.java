@@ -42,18 +42,11 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.config.PIDConstants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.controller.PIDController;
 
-import com.pathplanner.lib.path.GoalEndState;
-import com.pathplanner.lib.path.PathConstraints;
-import com.pathplanner.lib.path.PathPlannerPath;
-import com.pathplanner.lib.path.Waypoint;
-import com.pathplanner.lib.util.PathPlannerLogging;
 import org.littletonrobotics.junction.Logger;
 
 import frc.robot.generated.Constants;
 import frc.robot.generated.LimelightHelpers;
-import frc.robot.generated.LimelightHelpers.PoseEstimate;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -65,7 +58,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
 
-    private boolean m_isPathFollowing = false;
 
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
     private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
@@ -244,8 +236,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         if (LimelightHelpers.getTV(Constants.limelightName) != false && LimelightHelpers.getBotPose2d(Constants.limelightName) != null){
             poseEstimate = (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red)
-                ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose
-                : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose;
+                ? new Pose2d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2(Constants.limelightName).pose.getTranslation(), getEstimatedPose().getRotation())
+
+                : new Pose2d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(Constants.limelightName).pose.getTranslation(), getEstimatedPose().getRotation());
         }
 
         return poseEstimate;
@@ -256,13 +249,15 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     //     // return new Pose2d(LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getX(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getY(), LimelightHelpers.getTargetPose3d_RobotSpace(Constants.limelightName).getRotation().toRotation2d());
     // }
 
-    public Pose2d getAprilTagFieldRelativePose(){
-        return layout.getTagPose((int) LimelightHelpers.getFiducialID(Constants.limelightName)).get().toPose2d(); 
-    }
-
     public int getTagId(){
         return (int) LimelightHelpers.getFiducialID(Constants.limelightName);
     }
+
+    public Pose2d getAprilTagFieldRelativePose(){
+        return layout.getTagPose(getTagId())
+        .map(pose3d -> pose3d.toPose2d())
+        .orElseGet(() -> getAprilTagPose()); 
+}
 
     public Pose2d getAprilTagPose() {
 
@@ -401,23 +396,24 @@ public void periodic() {
     SmartDashboard.putNumberArray(
         "April Tag Pose",
         new double[] {
-            getAprilTagPose().getX(),
-            getAprilTagPose().getY(),
-            getAprilTagPose().getRotation().getRadians()
+            getAprilTagFieldRelativePose().getX(),
+            getAprilTagFieldRelativePose().getY(),
+            getAprilTagFieldRelativePose().getRotation().getRadians()
         }
     );
     
     SmartDashboard.putNumberArray(
         "Robot Pose",
         new double[] {
-            getEstimatedPose().getX(),
-            getEstimatedPose().getY(),
-            getEstimatedPose().getRotation().getRadians()
+            getFieldRelativeRobotPose().getX(),
+            getFieldRelativeRobotPose().getY(),
+            getFieldRelativeRobotPose().getRotation().getRadians()
         }
     );
     
-    Logger.recordOutput("Vision/LimelightPose", getLLPose());
-    Logger.recordOutput("Vision/AprilTagPose", getAprilTagPose());
+    Logger.recordOutput("Vision/LimelightPose", getFieldRelativeRobotPose());
+    Logger.recordOutput("Vision/AprilTagPose", getAprilTagFieldRelativePose());
+    Logger.recordOutput("Robot Pose", getEstimatedPose());
 
 }
 

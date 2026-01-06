@@ -4,22 +4,38 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.DataLogManager;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.TimedRobot;
+import org.littletonrobotics.junction.LogFileUtil;
+import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+import org.littletonrobotics.junction.wpilog.WPILOGReader;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+import org.littletonrobotics.junction.Logger;
+
+import com.pathplanner.lib.pathfinding.Pathfinding;
+
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
-public class Robot extends TimedRobot {
+public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
 
   @Override
   public void robotInit() {
-    // --- WPILib .wpilog logging ---
-    DataLogManager.start();                // Creates .wpilog
-    DataLogManager.logNetworkTables(true); // Logs SmartDashboard/NetworkTables into .wpilog
-    DriverStation.startDataLog(DataLogManager.getLog(), true); // DS + joystick data (recommended)
+    Pathfinding.setPathfinder(new LocalADStarAK());
+    Logger.recordMetadata("ProjectName", "MyProject"); // Set a metadata value
+
+    if (isReal()) {
+        Logger.addDataReceiver(new WPILOGWriter());
+        Logger.addDataReceiver(new NT4Publisher()); 
+    } else {
+        setUseTiming(false); // Run as fast as possible
+        String logPath = LogFileUtil.findReplayLog(); // Pull the replay log from AdvantageScope (or prompt the user)
+        Logger.setReplaySource(new WPILOGReader(logPath)); // Read replay log
+        Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); // Save outputs to a new log
+    }
+
+    Logger.start(); // Start logging! No more data receivers, replay sources, or metadata values may be added.
 
     m_robotContainer = new RobotContainer();
   }

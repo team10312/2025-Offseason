@@ -26,7 +26,7 @@ public class PathFindToTag extends Command {
 
   private final CommandSwerveDrivetrain drivetrain;
   private Command followCommand;
-
+  private boolean isFinished = false;
   private static final AprilTagFieldLayout FIELD =
       AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
 
@@ -43,19 +43,18 @@ public class PathFindToTag extends Command {
 
     new AnimateLed(AnimationType.Rainbow).schedule();
     
-    // drivetrain.resetPose(new Pose2d());
-    Pose2d robotPose = drivetrain.getEstimatedPose();
+    drivetrain.resetPose(drivetrain.getFieldRelativeRobotPose());
 
     Pose2d targetPose = new Pose2d();
 
     if (Utils.isSimulation()) {
       targetPose = SIM_TAG_POSE;
     }
-    else if (!LimelightHelpers.getTV(Constants.limelightName)){
-      targetPose = drivetrain.getAprilTagPose();
+    else if (LimelightHelpers.getTV(Constants.limelightName)){
+      targetPose = drivetrain.getAprilTagFieldRelativePose();
     }
     else{
-      new InstantCommand();
+      return;
     }
 
     Translation2d outward =
@@ -103,6 +102,6 @@ public class PathFindToTag extends Command {
 
   @Override
   public boolean isFinished() {
-    return false;
+    return isFinished;
   }
 }
