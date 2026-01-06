@@ -384,7 +384,7 @@ public void periodic() {
     // Provide current field-relative yaw to Limelight for MegaTag2 pose calculation
     LimelightHelpers.SetRobotOrientation(
         Constants.limelightName,
-        getEstimatedPose().getRotation().getDegrees(),
+        getEstimatedPose().getRotation().getDegrees() - 180,
         0, 0, 0, 0, 0
     );
 

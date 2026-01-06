@@ -17,6 +17,6 @@ public class Constants {
 
     //Pathfinding
     public static String limelightName = "limelight-low";
-    public static final PathConstraints constraints = new PathConstraints(2, 3,Units.degreesToRadians(540), Units.degreesToRadians(720));
+    public static final PathConstraints constraints = new PathConstraints(1, 1.5,Units.degreesToRadians(540), Units.degreesToRadians(720));
     public static final double aprilTagTolerance = 0.7;
 }

@@ -92,7 +92,7 @@ public class PathFindToTag extends Command {
     }
 
     drivetrain.stop();
-
+    drivetrain.seedFieldCentric();
     if (interrupted) {
       new DefaultLed().schedule();
     } else {
@@ -102,6 +102,6 @@ public class PathFindToTag extends Command {
 
   @Override
   public boolean isFinished() {
-    return isFinished;
+    return followCommand.isFinished();
   }
 }
